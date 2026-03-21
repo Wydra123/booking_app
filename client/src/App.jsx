@@ -1,121 +1,102 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+const API_URL = import.meta.env.VITE_API_URL;
+const token = localStorage.getItem("token");
+import { useEffect, useState } from "react";
+
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [services, setServices] = useState([]);
+
+  const [name, setName] = useState("");
+  const [duration, setDuration] = useState("");
+  const [price, setPrice] = useState("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    fetch(`${API_URL}/services`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setServices(data))
+      .catch((err) => console.error(err));
+  }, []);
+
+  const addService = async () => {
+    if (!name || !duration || !price) {
+      alert("Uzupełnij wszystkie pola");
+      return;
+    }
+    await fetch(`${API_URL}/services`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name,
+        duration,
+        price,
+      }),
+    });
+
+    setName("");
+    setDuration("");
+    setPrice("");
+
+    const res = await fetch(`${API_URL}/services`)
+    const data = await res.json();
+    setServices(data);
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+    <div style={{ padding: "20px" }}>
+      <h1>Usługi</h1>
+
+      {/* 🔥 FORMULARZ */}
+      <div style={{ marginBottom: "20px" }}>
+        <h2>Dodaj usługę</h2>
+
+        <input
+          placeholder="Nazwa"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <input
+          placeholder="Czas (min)"
+          value={duration}
+          onChange={(e) => setDuration(e.target.value)}
+        />
+
+        <input
+          placeholder="Cena"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+
+        <button onClick={addService}>Dodaj</button>
+      </div>
+
+      {/* 🔥 LISTA */}
+      {services.map((service) => (
+        <div
+          key={service.id}
+          style={{
+            border: "1px solid #ccc",
+            padding: "10px",
+            marginBottom: "10px",
+            borderRadius: "8px",
+          }}
         >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+          <h3>{service.name}</h3>
+          <p>⏱ {service.duration} min</p>
+          <p>💰 {service.price} zł</p>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      ))}
+    </div>
+  );
 }
 
-export default App
+export default App;
