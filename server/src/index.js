@@ -22,7 +22,6 @@ const jwt = require("jsonwebtoken");
 const SECRET = "SECRET_KEY";
 
 
-// 🔐 AUTH MIDDLEWARE
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -40,7 +39,6 @@ const authMiddleware = (req, res, next) => {
 };
 
 
-// 🔧 TEST
 app.get("/", (req, res) => {
   res.send("Backend działa 🚀");
 });
@@ -55,8 +53,6 @@ app.get("/db", async (req, res) => {
   }
 });
 
-
-// 🔐 REGISTER
 app.post("/register", async (req, res) => {
   const { email, password } = req.body;
 
@@ -71,7 +67,6 @@ app.post("/register", async (req, res) => {
 });
 
 
-// 🔐 LOGIN
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -103,7 +98,6 @@ app.post("/login", async (req, res) => {
 });
 
 
-// 🔥 BECOME PROVIDER (zwraca nowy token!)
 app.post("/become-provider", authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 
@@ -127,14 +121,12 @@ app.post("/become-provider", authMiddleware, async (req, res) => {
 });
 
 
-// 📦 WSZYSTKIE USŁUGI
 app.get("/services", async (req, res) => {
   const result = await pool.query("SELECT * FROM services");
   res.json(result.rows);
 });
 
 
-// ➕ DODAJ USŁUGĘ
 app.post("/services", authMiddleware, async (req, res) => {
   if (req.user.role !== "provider") {
     return res.status(403).json({ error: "Only providers can add services" });
@@ -151,8 +143,6 @@ app.post("/services", authMiddleware, async (req, res) => {
   res.json(result.rows[0]);
 });
 
-
-// 🔒 MOJE USŁUGI
 app.get("/my-services", authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 
@@ -165,7 +155,6 @@ app.get("/my-services", authMiddleware, async (req, res) => {
 });
 
 
-// 🔍 SZCZEGÓŁY USŁUGI
 app.get("/services/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -182,7 +171,6 @@ app.get("/services/:id", async (req, res) => {
 });
 
 
-// 🗑 DELETE (tylko właściciel)
 app.delete("/services/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
@@ -196,33 +184,84 @@ app.delete("/services/:id", authMiddleware, async (req, res) => {
 });
 
 
-// 📅 APPOINTMENTS
-app.get("/appointments", async (req, res) => {
-  const result = await pool.query("SELECT * FROM appointments");
-  res.json(result.rows);
-});
+app.post("/appointments", authMiddleware, async (req, res) => {
+  const { service_id, appointment_time } = req.body;
+  const userId = req.user.userId;
 
-app.post("/appointments", async (req, res) => {
-  const { user_id, service_id, appointment_time } = req.body;
+  const serviceResult = await pool.query(
+    "SELECT duration FROM services WHERE id = $1",
+    [service_id]
+  );
+
+  if (serviceResult.rows.length === 0) {
+    return res.status(404).json({ error: "Service not found" });
+  }
+
+  const duration = Number(serviceResult.rows[0].duration);
+
+  const startDate = new Date(appointment_time.replace(" ", "T") + ":00");
+  const endDate = new Date(startDate.getTime() + duration * 60000);
+
+  const conflict = await pool.query(
+    `SELECT * FROM appointments
+     WHERE service_id = $1
+     AND appointment_time < $2
+     AND end_time > $3`,
+    [service_id, endDate, startDate]
+  );
+
+  if (conflict.rows.length > 0) {
+    return res.status(400).json({ error: "Termin zajęty" });
+  }
 
   const result = await pool.query(
-    "INSERT INTO appointments (user_id, service_id, appointment_time) VALUES ($1, $2, $3) RETURNING *",
-    [user_id, service_id, appointment_time]
+    `INSERT INTO appointments (user_id, service_id, appointment_time, end_time)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [userId, service_id, appointment_time, endDate]
   );
 
   res.json(result.rows[0]);
 });
 
-app.delete("/appointments/:id", async (req, res) => {
+app.delete("/appointments/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.userId;
 
-  await pool.query("DELETE FROM appointments WHERE id = $1", [id]);
+  await pool.query(
+    "DELETE FROM appointments WHERE id = $1 AND user_id = $2",
+    [id, userId]
+  );
 
   res.send("Deleted");
 });
 
+app.get("/appointments/:serviceId", async (req, res) => {
+  const { serviceId } = req.params;
 
-// 🚀 START
+  const result = await pool.query(
+    "SELECT appointment_time, end_time FROM appointments WHERE service_id = $1",
+    [serviceId]
+  );
+
+  res.json(result.rows);
+});
+
+app.get("/my-appointments", authMiddleware, async (req, res) => {
+  const userId = req.user.userId;
+
+  const result = await pool.query(
+    `SELECT appointments.*, services.name 
+     FROM appointments 
+     JOIN services ON appointments.service_id = services.id
+     WHERE appointments.user_id = $1
+     ORDER BY appointment_time ASC`,
+    [userId]
+  );
+
+  res.json(result.rows);
+});
+
 app.listen(3001, () => {
   console.log("Server running on port 3001");
 });

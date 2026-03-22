@@ -6,6 +6,8 @@ import Login from "./Login";
 import Register from "./Register";
 import MyServices from "./MyServices";
 import ServiceDetails from "./ServiceDetails";
+import MyAppointments from "./MyAppointments";
+
 
 function AppRouter() {
   return (
@@ -17,6 +19,7 @@ function AppRouter() {
         <Route path="/register" element={<Register />} />
         <Route path="/my-services" element={<MyServices />} />
         <Route path="/service/:id" element={<ServiceDetails />} />
+        <Route path="/my-appointments" element={<MyAppointments />} />
       </Routes>
     </BrowserRouter>
   );

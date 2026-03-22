@@ -44,6 +44,11 @@ function Navbar() {
           Moje usługi
         </button>
       )}
+      {token && (
+        <button onClick={() => navigate("/my-appointments")}>
+            Moje rezerwacje
+        </button>
+        )}
 
       {/* 🔥 ZOSTAŃ PROVIDEREM */}
         {user?.role === "client" && (
