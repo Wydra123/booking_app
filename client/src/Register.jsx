@@ -3,14 +3,19 @@ import { useNavigate } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-function Login() {
+function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const navigate = useNavigate();
 
-  const login = async () => {
-    const res = await fetch(`${API_URL}/login`, {
+  const register = async () => {
+    if (!email || !password) {
+      alert("Uzupełnij dane");
+      return;
+    }
+
+    const res = await fetch(`${API_URL}/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -20,38 +25,35 @@ function Login() {
 
     const data = await res.json();
 
-    if (data.token) {
-      // 🔥 zapis tokena
-      localStorage.setItem("token", data.token);
-
-      // 🔥 powiadom navbar
-      window.dispatchEvent(new Event("authChanged"));
-
-      // 🔥 redirect
-      navigate("/");
-    } else {
-      alert("Błąd logowania");
+    if (!res.ok) {
+      alert(data.error || "Błąd rejestracji");
+      return;
     }
+
+    alert("Zarejestrowano!");
+    navigate("/login");
   };
 
   return (
-    <div>
-      <h1>Login</h1>
+    <div style={{ padding: "20px" }}>
+      <h1>Rejestracja</h1>
 
       <input
+        placeholder="Email"
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="email"
       />
 
       <input
         type="password"
+        placeholder="Hasło"
         onChange={(e) => setPassword(e.target.value)}
-        placeholder="password"
       />
 
-      <button onClick={login}>Login</button>
+      <button onClick={register} style={{ marginTop: "10px" }}>
+        Zarejestruj
+      </button>
     </div>
   );
 }
 
-export default Login;
+export default Register;

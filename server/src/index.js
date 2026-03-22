@@ -9,13 +9,38 @@ app.use(cors());
 const { Pool } = require("pg");
 
 const pool = new Pool({
-  host: "db", // 🔥 ważne!
+  host: "db",
   user: "postgres",
   password: "postgres",
   database: "myapp",
   port: 5432,
 });
 
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+const SECRET = "SECRET_KEY";
+
+
+// 🔐 AUTH MIDDLEWARE
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) return res.sendStatus(401);
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    req.user = decoded;
+    next();
+  } catch {
+    return res.sendStatus(403);
+  }
+};
+
+
+// 🔧 TEST
 app.get("/", (req, res) => {
   res.send("Backend działa 🚀");
 });
@@ -31,45 +56,22 @@ app.get("/db", async (req, res) => {
 });
 
 
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-
-
-const authMiddleware = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) return res.sendStatus(401);
-
-  const token = jwt.sign(
-    { 
-      userId: user.rows[0].id,
-      role: user.rows[0].role
-    },
-    "SECRET_KEY"
-  );
-
-  try {
-    const user = jwt.verify(token, "SECRET_KEY");
-    req.user = user;
-    next();
-  } catch {
-    res.sendStatus(403);
-  }
-};
-
+// 🔐 REGISTER
 app.post("/register", async (req, res) => {
   const { email, password } = req.body;
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const result = await pool.query(
-    "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
+    "INSERT INTO users (email, password, role) VALUES ($1, $2, 'client') RETURNING *",
     [email, hashedPassword]
   );
 
   res.json(result.rows[0]);
 });
 
+
+// 🔐 LOGIN
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -89,20 +91,50 @@ app.post("/login", async (req, res) => {
   }
 
   const token = jwt.sign(
-    { userId: user.rows[0].id },
-    "SECRET_KEY"
+    {
+      userId: user.rows[0].id,
+      role: user.rows[0].role,
+      email: user.rows[0].email,
+    },
+    SECRET
   );
 
   res.json({ token });
 });
 
 
+// 🔥 BECOME PROVIDER (zwraca nowy token!)
+app.post("/become-provider", authMiddleware, async (req, res) => {
+  const userId = req.user.userId;
 
+  const result = await pool.query(
+    "UPDATE users SET role = 'provider' WHERE id = $1 RETURNING *",
+    [userId]
+  );
+
+  const user = result.rows[0];
+
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      role: user.role,
+      email: user.email,
+    },
+    SECRET
+  );
+
+  res.json({ token });
+});
+
+
+// 📦 WSZYSTKIE USŁUGI
 app.get("/services", async (req, res) => {
   const result = await pool.query("SELECT * FROM services");
   res.json(result.rows);
 });
 
+
+// ➕ DODAJ USŁUGĘ
 app.post("/services", authMiddleware, async (req, res) => {
   if (req.user.role !== "provider") {
     return res.status(403).json({ error: "Only providers can add services" });
@@ -119,6 +151,8 @@ app.post("/services", authMiddleware, async (req, res) => {
   res.json(result.rows[0]);
 });
 
+
+// 🔒 MOJE USŁUGI
 app.get("/my-services", authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 
@@ -130,6 +164,25 @@ app.get("/my-services", authMiddleware, async (req, res) => {
   res.json(result.rows);
 });
 
+
+// 🔍 SZCZEGÓŁY USŁUGI
+app.get("/services/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const result = await pool.query(
+    "SELECT services.*, users.email FROM services JOIN users ON services.user_id = users.id WHERE services.id = $1",
+    [id]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: "Not found" });
+  }
+
+  res.json(result.rows[0]);
+});
+
+
+// 🗑 DELETE (tylko właściciel)
 app.delete("/services/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
@@ -142,17 +195,8 @@ app.delete("/services/:id", authMiddleware, async (req, res) => {
   res.send("Deleted");
 });
 
-app.post("/users", async (req, res) => {
-  const { email, password } = req.body;
 
-  const result = await pool.query(
-    "INSERT INTO users (email, password, role) VALUES ($1, $2, $3) RETURNING *",
-    [email, hashedPassword, role || "client"]
-  );
-
-  res.json(result.rows[0]);
-});
-
+// 📅 APPOINTMENTS
 app.get("/appointments", async (req, res) => {
   const result = await pool.query("SELECT * FROM appointments");
   res.json(result.rows);
@@ -178,7 +222,7 @@ app.delete("/appointments/:id", async (req, res) => {
 });
 
 
+// 🚀 START
 app.listen(3001, () => {
   console.log("Server running on port 3001");
 });
-
