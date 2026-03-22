@@ -132,28 +132,28 @@ app.post("/services", authMiddleware, async (req, res) => {
     return res.status(403).json({ error: "Only providers can add services" });
   }
 
-  const { name, duration, price } = req.body;
+  const { name, duration, price, availability } = req.body;
   const userId = req.user.userId;
 
-  const result = await pool.query(
+  const service = await pool.query(
     "INSERT INTO services (name, duration, price, user_id) VALUES ($1, $2, $3, $4) RETURNING *",
     [name, duration, price, userId]
   );
 
-  res.json(result.rows[0]);
+  const serviceId = service.rows[0].id;
+
+  for (const day of availability) {
+    if (day.enabled) {
+      await pool.query(
+        `INSERT INTO availability (service_id, day_of_week, start_time, end_time)
+         VALUES ($1, $2, $3, $4)`,
+        [serviceId, day.day, day.start, day.end]
+      );
+    }
+  }
+
+  res.json(service.rows[0]);
 });
-
-app.get("/my-services", authMiddleware, async (req, res) => {
-  const userId = req.user.userId;
-
-  const result = await pool.query(
-    "SELECT * FROM services WHERE user_id = $1",
-    [userId]
-  );
-
-  res.json(result.rows);
-});
-
 
 app.get("/services/:id", async (req, res) => {
   const { id } = req.params;
@@ -184,30 +184,48 @@ app.delete("/services/:id", authMiddleware, async (req, res) => {
 });
 
 
+
+app.get("/my-services", authMiddleware, async (req, res) => {
+  const userId = req.user.userId;
+
+  const result = await pool.query(
+    "SELECT * FROM services WHERE user_id = $1",
+    [userId]
+  );
+
+  res.json(result.rows);
+});
+
 app.post("/appointments", authMiddleware, async (req, res) => {
   const { service_id, appointment_time } = req.body;
   const userId = req.user.userId;
 
-  const serviceResult = await pool.query(
+  const service = await pool.query(
     "SELECT duration FROM services WHERE id = $1",
     [service_id]
   );
 
-  if (serviceResult.rows.length === 0) {
-    return res.status(404).json({ error: "Service not found" });
-  }
+  const duration = Number(service.rows[0].duration);
 
-  const duration = Number(serviceResult.rows[0].duration);
+  const addMinutes = (time, mins) => {
+    const [date, t] = time.split("T");
+    let [h, m] = t.split(":").map(Number);
 
-  const startDate = new Date(appointment_time.replace(" ", "T") + ":00");
-  const endDate = new Date(startDate.getTime() + duration * 60000);
+    m += mins;
+    h += Math.floor(m / 60);
+    m = m % 60;
+
+    return `${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
+
+  const end_time = addMinutes(appointment_time, duration);
 
   const conflict = await pool.query(
     `SELECT * FROM appointments
      WHERE service_id = $1
      AND appointment_time < $2
      AND end_time > $3`,
-    [service_id, endDate, startDate]
+    [service_id, end_time, appointment_time]
   );
 
   if (conflict.rows.length > 0) {
@@ -218,7 +236,7 @@ app.post("/appointments", authMiddleware, async (req, res) => {
     `INSERT INTO appointments (user_id, service_id, appointment_time, end_time)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [userId, service_id, appointment_time, endDate]
+    [userId, service_id, appointment_time, end_time]
   );
 
   res.json(result.rows[0]);
@@ -237,14 +255,93 @@ app.delete("/appointments/:id", authMiddleware, async (req, res) => {
 });
 
 app.get("/appointments/:serviceId", async (req, res) => {
-  const { serviceId } = req.params;
-
   const result = await pool.query(
     "SELECT appointment_time, end_time FROM appointments WHERE service_id = $1",
-    [serviceId]
+    [req.params.serviceId]
   );
 
   res.json(result.rows);
+});
+
+
+app.get("/available-slots/:serviceId", async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ error: "Missing date" });
+    }
+
+    const service = await pool.query(
+      "SELECT duration FROM services WHERE id = $1",
+      [serviceId]
+    );
+
+    const duration = Number(service.rows[0].duration);
+
+    const jsDay = new Date(date).getDay();
+    const day = (jsDay + 6) % 7;
+
+    const availability = await pool.query(
+      "SELECT * FROM availability WHERE service_id = $1 AND day_of_week = $2",
+      [serviceId, day]
+    );
+
+    if (availability.rows.length === 0) {
+      return res.json([]);
+    }
+
+    const { start_time, end_time } = availability.rows[0];
+
+    const addMinutes = (time, mins) => {
+      const [date, t] = time.split("T");
+      let [h, m] = t.split(":").map(Number);
+
+      m += mins;
+      h += Math.floor(m / 60);
+      m = m % 60;
+
+      return `${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    };
+
+    let slots = [];
+
+    let current = `${date}T${start_time.slice(0, 5)}`;
+    const end = `${date}T${end_time.slice(0, 5)}`;
+
+    while (current < end) {
+      const slotEnd = addMinutes(current, duration);
+
+      slots.push({
+        start: current,
+        end: slotEnd,
+      });
+
+      current = addMinutes(current, 30);
+    }
+
+    const appointments = await pool.query(
+      "SELECT appointment_time, end_time FROM appointments WHERE service_id = $1",
+      [serviceId]
+    );
+
+    const result = slots.map((slot) => {
+      const isTaken = appointments.rows.some((t) => {
+        return slot.start >= t.appointment_time && slot.start < t.end_time;
+      });
+
+      return {
+        time: slot.start,
+        available: !isTaken,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 app.get("/my-appointments", authMiddleware, async (req, res) => {

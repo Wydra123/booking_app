@@ -10,6 +10,18 @@ function MyServices() {
   const [duration, setDuration] = useState("");
   const [price, setPrice] = useState("");
 
+  const daysTemplate = [
+    { day: 0, label: "Pn", enabled: false, start: "", end: "" },
+    { day: 1, label: "Wt", enabled: false, start: "", end: "" },
+    { day: 2, label: "Śr", enabled: false, start: "", end: "" },
+    { day: 3, label: "Czw", enabled: false, start: "", end: "" },
+    { day: 4, label: "Pt", enabled: false, start: "", end: "" },
+    { day: 5, label: "Sb", enabled: false, start: "", end: "" },
+    { day: 6, label: "Nd", enabled: false, start: "", end: "" },
+  ];
+
+  const [availability, setAvailability] = useState(daysTemplate);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,13 +50,22 @@ function MyServices() {
       return;
     }
 
+    const filteredAvailability = availability.filter(
+      (d) => d.enabled && d.start && d.end
+    );
+
     const res = await fetch(`${API_URL}/services`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ name, duration, price }),
+      body: JSON.stringify({
+        name,
+        duration,
+        price,
+        availability: filteredAvailability, // 🔥 TU
+      }),
     });
 
     const data = await res.json();
@@ -66,6 +87,7 @@ function MyServices() {
     setName("");
     setDuration("");
     setPrice("");
+    setAvailability(daysTemplate);
   };
 
   const deleteService = async (id) => {
@@ -106,6 +128,64 @@ function MyServices() {
           onChange={(e) => setPrice(e.target.value)}
         />
 
+        <h3>Dostępność</h3>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          {availability.map((d, i) => (
+            <div
+              key={d.day}
+              style={{
+                border: "1px solid #ccc",
+                padding: "8px",
+                borderRadius: "6px",
+              }}
+            >
+              <label>
+                <input
+                  type="checkbox"
+                  checked={d.enabled}
+                  onChange={(e) => {
+                    const updated = [...availability];
+                    updated[i].enabled = e.target.checked;
+                    setAvailability(updated);
+                  }}
+                />
+                {d.label}
+              </label>
+
+              {d.enabled && (
+                <div>
+                  <input
+                    type="time"
+                    value={d.start}
+                    onChange={(e) => {
+                      const updated = [...availability];
+                      updated[i].start = e.target.value;
+                      setAvailability(updated);
+                    }}
+                  />
+
+                  <input
+                    type="time"
+                    value={d.end}
+                    onChange={(e) => {
+                      const updated = [...availability];
+                      updated[i].end = e.target.value;
+                      setAvailability(updated);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
         <button onClick={addService}>Dodaj</button>
       </div>
 
@@ -113,13 +193,24 @@ function MyServices() {
         <div
           key={service.id}
           onClick={() => navigate(`/service/${service.id}`)}
-          style={{ cursor: "pointer" }}
+          style={{
+            cursor: "pointer",
+            border: "1px solid #ccc",
+            padding: "10px",
+            marginBottom: "10px",
+            borderRadius: "8px",
+          }}
         >
           <h3>{service.name}</h3>
           <p>⏱ {service.duration} min</p>
           <p>💰 {service.price} zł</p>
 
-          <button onClick={() => deleteService(service.id)}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation(); 
+              deleteService(service.id);
+            }}
+          >
             Usuń
           </button>
         </div>

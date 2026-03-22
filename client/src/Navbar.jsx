@@ -10,7 +10,6 @@ function Navbar() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [user, setUser] = useState(getUserFromToken());
 
-  // 🔥 nasłuchiwanie zmian auth
   useEffect(() => {
     const updateAuth = () => {
       setToken(localStorage.getItem("token"));
@@ -34,7 +33,6 @@ function Navbar() {
         gap: "10px",
       }}
     >
-      {/* 🔥 NAV */}
       <button onClick={() => navigate("/")}>
         Wszystkie usługi
       </button>
@@ -50,7 +48,6 @@ function Navbar() {
         </button>
         )}
 
-      {/* 🔥 ZOSTAŃ PROVIDEREM */}
         {user?.role === "client" && (
         <button
             onClick={async () => {
@@ -65,10 +62,8 @@ function Navbar() {
 
             const data = await res.json();
 
-            // 🔥 NOWY TOKEN
             localStorage.setItem("token", data.token);
 
-            // 🔥 POWIADOM REACT
             window.dispatchEvent(new Event("authChanged"));
             }}
         >
@@ -76,10 +71,8 @@ function Navbar() {
         </button>
         )}
         
-      {/* 🔥 RIGHT */}
       <div style={{ marginLeft: "auto", display: "flex", gap: "10px" }}>
         {token ? (
-            // <><span>{user?.email?.split("@")[0]}</span>
             <><span>{user?.email}</span>
             <button
                 onClick={() => {

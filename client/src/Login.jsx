@@ -21,13 +21,10 @@ function Login() {
     const data = await res.json();
 
     if (data.token) {
-      // 🔥 zapis tokena
       localStorage.setItem("token", data.token);
 
-      // 🔥 powiadom navbar
       window.dispatchEvent(new Event("authChanged"));
 
-      // 🔥 redirect
       navigate("/");
     } else {
       alert("Błąd logowania");
