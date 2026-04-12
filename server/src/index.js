@@ -1,14 +1,15 @@
 const express = require("express");
 const app = express();
-require("dotenv").config();
+require("dotenv").config(); // Ładuje zmienne środowiskowe z pliku .env
 
-app.use(express.json());
+app.use(express.json()); // Parsowanie ciała żądań jako JSON
 
 const cors = require("cors");
-app.use(cors());
+app.use(cors()); // Zezwolenie na żądania cross-origin (frontend na innym porcie)
 
 const { Pool } = require("pg");
 
+// Pula połączeń z bazą PostgreSQL — dane logowania z .env
 const pool = new Pool({
   host: "db",
   user: process.env.DB_USER,
@@ -20,15 +21,19 @@ const pool = new Pool({
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+// Klucz do podpisywania tokenów JWT — powinien być w .env na produkcji
 const SECRET = "SECRET_KEY";
 
 
+// Middleware sprawdzający token JWT w nagłówku Authorization: Bearer <token>
+// Dokłada zdekodowane dane użytkownika do req.user i przekazuje dalej
+// Zwraca 401 gdy brak nagłówka, 403 gdy token nieważny/wygasły
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) return res.sendStatus(401);
 
-  const token = authHeader.split(" ")[1];
+  const token = authHeader.split(" ")[1]; // wycinamy część po "Bearer "
 
   try {
     const decoded = jwt.verify(token, SECRET);
@@ -40,10 +45,12 @@ const authMiddleware = (req, res, next) => {
 };
 
 
+// Healthcheck — sprawdzenie czy serwer działa
 app.get("/", (req, res) => {
   res.send("Backend działa 🚀");
 });
 
+// Healthcheck bazy danych — zwraca aktualny czas z PostgreSQL
 app.get("/db", async (req, res) => {
   try {
     const result = await pool.query("SELECT NOW()");
@@ -54,6 +61,8 @@ app.get("/db", async (req, res) => {
   }
 });
 
+// Rejestracja nowego użytkownika
+// Sprawdza unikalność emaila, hashuje hasło bcryptem, zapisuje z rolą "client"
 app.post("/register", async (req, res) => {
   const { email, password } = req.body;
 
@@ -61,7 +70,7 @@ app.post("/register", async (req, res) => {
     return res.status(400).json({ error: "Email i hasło są wymagane." });
   }
 
-  // sprawdź czy email już istnieje
+  // Sprawdź czy email już istnieje
   const existing = await pool.query(
     "SELECT id FROM users WHERE email = $1",
     [email]
@@ -80,6 +89,8 @@ app.post("/register", async (req, res) => {
 });
 
 
+// Logowanie użytkownika
+// Weryfikuje hasło bcryptem, zwraca token JWT z userId, rolą i emailem
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -98,6 +109,7 @@ app.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Nieprawidłowe hasło." });
   }
 
+  // Generujemy token z danymi użytkownika — rola trafia do frontendu bez dodatkowego requestu
   const token = jwt.sign(
     {
       userId: user.rows[0].id,
@@ -111,6 +123,8 @@ app.post("/login", async (req, res) => {
 });
 
 
+// Zmiana roli zalogowanego użytkownika z "client" na "provider"
+// Zwraca nowy token JWT z już zaktualizowaną rolą
 app.post("/become-provider", authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 
@@ -134,12 +148,15 @@ app.post("/become-provider", authMiddleware, async (req, res) => {
 });
 
 
+// Zwraca wszystkie dostępne usługi (publiczny endpoint — bez autoryzacji)
 app.get("/services", async (req, res) => {
   const result = await pool.query("SELECT * FROM services");
   res.json(result.rows);
 });
 
 
+// Dodaje nową usługę wraz z dostępnością (tylko dla providerów)
+// availability to tablica dni tygodnia z godzinami start/end
 app.post("/services", authMiddleware, async (req, res) => {
   if (req.user.role !== "provider") {
     return res.status(403).json({ error: "Only providers can add services" });
@@ -155,6 +172,7 @@ app.post("/services", authMiddleware, async (req, res) => {
 
   const serviceId = service.rows[0].id;
 
+  // Zapisujemy dostępność dla każdego zaznaczonego dnia tygodnia
   for (const day of availability) {
     if (day.enabled) {
       await pool.query(
@@ -168,6 +186,7 @@ app.post("/services", authMiddleware, async (req, res) => {
   res.json(service.rows[0]);
 });
 
+// Zwraca szczegóły jednej usługi wraz z emailem właściciela (JOIN z tabelą users)
 app.get("/services/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -184,6 +203,7 @@ app.get("/services/:id", async (req, res) => {
 });
 
 
+// Usuwa usługę — tylko właściciel może usunąć swoją usługę (warunek user_id = $2)
 app.delete("/services/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
@@ -197,7 +217,7 @@ app.delete("/services/:id", authMiddleware, async (req, res) => {
 });
 
 
-
+// Zwraca usługi należące do zalogowanego providera
 app.get("/my-services", authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 
@@ -209,6 +229,9 @@ app.get("/my-services", authMiddleware, async (req, res) => {
   res.json(result.rows);
 });
 
+// Tworzy rezerwację dla wybranego slotu
+// Oblicza end_time na podstawie czasu trwania usługi,
+// sprawdza konflikt z istniejącymi rezerwacjami (nakładanie się przedziałów czasowych)
 app.post("/appointments", authMiddleware, async (req, res) => {
   const { service_id, appointment_time } = req.body;
   const userId = req.user.userId;
@@ -220,6 +243,7 @@ app.post("/appointments", authMiddleware, async (req, res) => {
 
   const duration = Number(service.rows[0].duration);
 
+  // Pomocnicza funkcja dodająca minuty do timestampa w formacie "YYYY-MM-DDTHH:MM"
   const addMinutes = (time, mins) => {
     const [date, t] = time.split("T");
     let [h, m] = t.split(":").map(Number);
@@ -233,6 +257,7 @@ app.post("/appointments", authMiddleware, async (req, res) => {
 
   const end_time = addMinutes(appointment_time, duration);
 
+  // Sprawdzenie konfliktu: czy istnieje rezerwacja nakładająca się z żądanym przedziałem
   const conflict = await pool.query(
     `SELECT * FROM appointments
      WHERE service_id = $1
@@ -255,6 +280,7 @@ app.post("/appointments", authMiddleware, async (req, res) => {
   res.json(result.rows[0]);
 });
 
+// Anuluje rezerwację — tylko właściciel rezerwacji może ją usunąć (warunek user_id = $2)
 app.delete("/appointments/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
@@ -267,6 +293,8 @@ app.delete("/appointments/:id", authMiddleware, async (req, res) => {
   res.send("Deleted");
 });
 
+// Zwraca wszystkie rezerwacje dla danej usługi (appointment_time i end_time)
+// Używane wewnętrznie do sprawdzania zajętości slotów
 app.get("/appointments/:serviceId", async (req, res) => {
   const result = await pool.query(
     "SELECT appointment_time, end_time FROM appointments WHERE service_id = $1",
@@ -277,6 +305,9 @@ app.get("/appointments/:serviceId", async (req, res) => {
 });
 
 
+// Zwraca listę slotów godzinowych dla danej usługi i daty
+// Sloty generowane co 30 min w oknie dostępności providera,
+// każdy slot oznaczony flagą available: true/false na podstawie istniejących rezerwacji
 app.get("/available-slots/:serviceId", async (req, res) => {
   try {
     const { serviceId } = req.params;
@@ -293,20 +324,24 @@ app.get("/available-slots/:serviceId", async (req, res) => {
 
     const duration = Number(service.rows[0].duration);
 
+    // getDay() zwraca 0=niedziela…6=sobota, przeliczamy na 0=Pn…6=Nd
     const jsDay = new Date(date).getDay();
     const day = (jsDay + 6) % 7;
 
+    // Pobieramy godziny pracy providera dla danego dnia tygodnia
     const availability = await pool.query(
       "SELECT * FROM availability WHERE service_id = $1 AND day_of_week = $2",
       [serviceId, day]
     );
 
+    // Brak wpisu w availability = provider nie pracuje w tym dniu
     if (availability.rows.length === 0) {
       return res.json([]);
     }
 
     const { start_time, end_time } = availability.rows[0];
 
+    // Pomocnicza funkcja dodająca minuty do timestampa w formacie "YYYY-MM-DDTHH:MM"
     const addMinutes = (time, mins) => {
       const [date, t] = time.split("T");
       let [h, m] = t.split(":").map(Number);
@@ -320,6 +355,7 @@ app.get("/available-slots/:serviceId", async (req, res) => {
 
     let slots = [];
 
+    // Generujemy sloty co 30 minut od start_time do end_time
     let current = `${date}T${start_time.slice(0, 5)}`;
     const end = `${date}T${end_time.slice(0, 5)}`;
 
@@ -334,11 +370,13 @@ app.get("/available-slots/:serviceId", async (req, res) => {
       current = addMinutes(current, 30);
     }
 
+    // Pobieramy istniejące rezerwacje dla tej usługi
     const appointments = await pool.query(
       "SELECT appointment_time, end_time FROM appointments WHERE service_id = $1",
       [serviceId]
     );
 
+    // Oznaczamy każdy slot jako zajęty jeśli jego start mieści się w przedziale istniejącej rezerwacji
     const result = slots.map((slot) => {
       const isTaken = appointments.rows.some((t) => {
         return slot.start >= t.appointment_time && slot.start < t.end_time;
@@ -357,12 +395,14 @@ app.get("/available-slots/:serviceId", async (req, res) => {
   }
 });
 
+// Zwraca rezerwacje zalogowanego użytkownika posortowane chronologicznie
+// JOIN z services żeby dołączyć nazwę usługi
 app.get("/my-appointments", authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 
   const result = await pool.query(
-    `SELECT appointments.*, services.name 
-     FROM appointments 
+    `SELECT appointments.*, services.name
+     FROM appointments
      JOIN services ON appointments.service_id = services.id
      WHERE appointments.user_id = $1
      ORDER BY appointment_time ASC`,
