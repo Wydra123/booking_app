@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+// Adres backendu pobierany ze zmiennej środowiskowej Vite
 const API_URL = import.meta.env.VITE_API_URL;
 
+// Panel usługodawcy — przeglądanie, dodawanie i usuwanie własnych usług
 function MyServices() {
   const [services, setServices] = useState([]);
 
+  // Pola formularza nowej usługi
   const [name, setName] = useState("");
   const [duration, setDuration] = useState("");
   const [price, setPrice] = useState("");
 
+  // Szablon dostępności — 7 dni tygodnia (0=Pn … 6=Nd), domyślnie wszystkie wyłączone
   const daysTemplate = [
     { day: 0, label: "Pn", enabled: false, start: "", end: "" },
     { day: 1, label: "Wt", enabled: false, start: "", end: "" },
@@ -20,13 +24,16 @@ function MyServices() {
     { day: 6, label: "Nd", enabled: false, start: "", end: "" },
   ];
 
+  // Stan dostępności — kopia szablonu modyfikowana przez checkboxy i inputy czasu
   const [availability, setAvailability] = useState(daysTemplate);
 
   const navigate = useNavigate();
 
+  // Przy pierwszym renderze: sprawdzamy token i pobieramy usługi providera
   useEffect(() => {
     const token = localStorage.getItem("token");
 
+    // Brak tokena — przekierowanie na login
     if (!token) {
       navigate("/login");
       return;
@@ -42,6 +49,8 @@ function MyServices() {
       .catch((err) => console.error(err));
   }, [navigate]);
 
+  // Dodaje nową usługę — wysyła dane formularza + dostępność do API,
+  // po sukcesie odświeża listę i resetuje formularz
   const addService = async () => {
     const token = localStorage.getItem("token");
 
@@ -50,6 +59,7 @@ function MyServices() {
       return;
     }
 
+    // Wysyłamy tylko dni, które mają zaznaczony checkbox i uzupełnione godziny
     const filteredAvailability = availability.filter(
       (d) => d.enabled && d.start && d.end
     );
@@ -64,7 +74,7 @@ function MyServices() {
         name,
         duration,
         price,
-        availability: filteredAvailability, // 🔥 TU
+        availability: filteredAvailability,
       }),
     });
 
@@ -75,6 +85,7 @@ function MyServices() {
       return;
     }
 
+    // Pobieramy świeżą listę z backendu zamiast dopisywać lokalnie
     const refresh = await fetch(`${API_URL}/my-services`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -84,12 +95,14 @@ function MyServices() {
     const refreshedData = await refresh.json();
     setServices(refreshedData);
 
+    // Czyszczenie formularza po dodaniu
     setName("");
     setDuration("");
     setPrice("");
     setAvailability(daysTemplate);
   };
 
+  // Usuwa usługę po stronie API i lokalnie aktualizuje listę
   const deleteService = async (id) => {
     const token = localStorage.getItem("token");
 
@@ -107,6 +120,7 @@ function MyServices() {
     <div style={{ padding: "20px" }}>
       <h1>Moje usługi</h1>
 
+      {/* Formularz dodawania nowej usługi */}
       <div style={{ marginBottom: "20px" }}>
         <h2>Dodaj usługę</h2>
 
@@ -130,6 +144,7 @@ function MyServices() {
 
         <h3>Dostępność</h3>
 
+        {/* Siatka dni tygodnia — checkbox włącza widoczność pól godzinowych */}
         <div
           style={{
             display: "flex",
@@ -159,6 +174,7 @@ function MyServices() {
                 {d.label}
               </label>
 
+              {/* Pola godzin start/end pojawiają się tylko gdy dzień jest włączony */}
               {d.enabled && (
                 <div>
                   <input
@@ -189,6 +205,7 @@ function MyServices() {
         <button onClick={addService}>Dodaj</button>
       </div>
 
+      {/* Lista istniejących usług — klik na kafelek prowadzi do szczegółów */}
       {services.map((service) => (
         <div
           key={service.id}
@@ -205,9 +222,10 @@ function MyServices() {
           <p>⏱ {service.duration} min</p>
           <p>💰 {service.price} zł</p>
 
+          {/* stopPropagation zapobiega przejściu do szczegółów przy kliknięciu "Usuń" */}
           <button
             onClick={(e) => {
-              e.stopPropagation(); 
+              e.stopPropagation();
               deleteService(service.id);
             }}
           >

@@ -1,48 +1,71 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getUserFromToken } from "../utils/auth";
+import { ErrorMessage, InfoMessage } from "./ErrorMessage";
 import "./ServiceDetails.css";
 
+// Adres backendu pobierany ze zmiennej środowiskowej Vite
 const API_URL = import.meta.env.VITE_API_URL;
 
+// Strona szczegółów usługi z wyborem terminu i rezerwacją
 function ServiceDetails() {
+  // id usługi z URL (np. /service/3)
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [service, setService] = useState(null);
+  // Wybrana data w formacie YYYY-MM-DD
   const [date, setDate] = useState("");
+  // Lista slotów godzinowych zwrócona przez API dla wybranej daty
   const [slots, setSlots] = useState([]);
+  // Wybrany slot (pełny timestamp)
   const [selectedSlot, setSelectedSlot] = useState(null);
+  // Flaga informująca, że API odpowiedziało na zapytanie o sloty
+  const [slotsLoaded, setSlotsLoaded] = useState(false);
+  const [bookingError, setBookingError] = useState("");
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
+  // Dane zalogowanego użytkownika (lub null jeśli niezalogowany)
   const user = getUserFromToken();
 
+  // Pobieramy dane usługi przy pierwszym renderze lub zmianie id
   useEffect(() => {
     fetch(`${API_URL}/services/${id}`)
       .then((res) => res.json())
       .then(setService);
   }, [id]);
 
+  // Gdy użytkownik zmieni datę — pobieramy dostępne sloty dla tej daty
+  // Reset stanu (slots, slotsLoaded, selectedSlot) odbywa się w onChange daty,
+  // dzięki czemu useEffect wywołuje setState tylko asynchronicznie w .then()
   useEffect(() => {
     if (!date) return;
-
     fetch(`${API_URL}/available-slots/${id}?date=${date}`)
       .then((res) => res.json())
       .then((data) => {
-        console.log("SLOTS:", data);
         setSlots(data);
+        setSlotsLoaded(true);
       });
   }, [date, id]);
 
-  if (!service) return <div>Loading...</div>;
+  // Czekamy na załadowanie danych usługi
+  if (!service) return <div>Ładowanie...</div>;
 
+  // Właściciel usługi nie może jej sam zarezerwować — ukrywamy formularz rezerwacji
   const isOwner = user?.userId === service.user_id;
 
+  // Rezerwuje wybrany slot — wymaga zalogowania i wybranego slotu
   const book = async () => {
-    const token = localStorage.getItem("token");
-
-    if (!selectedSlot) {
-      alert("Wybierz godzinę");
+    if (!user) {
+      navigate("/login");
       return;
     }
+
+    setBookingError("");
+    setBookingSuccess(false);
+
+    const token = localStorage.getItem("token");
 
     const res = await fetch(`${API_URL}/appointments`, {
       method: "POST",
@@ -59,44 +82,67 @@ function ServiceDetails() {
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.error);
+      setBookingError(data.error || "Nie udało się zarezerwować terminu.");
       return;
     }
 
-    alert("Zarezerwowano!");
+    setBookingSuccess(true);
 
-    const refresh = await fetch(
-      `${API_URL}/available-slots/${id}?date=${date}`
-    );
+    // Po rezerwacji odświeżamy sloty — zarezerwowany termin zmieni status na zajęty
+    const refresh = await fetch(`${API_URL}/available-slots/${id}?date=${date}`);
     const refreshed = await refresh.json();
     setSlots(refreshed);
-
     setSelectedSlot(null);
   };
+
+  // Liczba dostępnych (wolnych) slotów w wybranym dniu
+  const availableCount = slots.filter((s) => s.available).length;
 
   return (
     <div className="service-container">
       <h1>{service.name}</h1>
-
       <p>⏱ {service.duration} min</p>
       <p>💰 {service.price} zł</p>
       <p>👤 {service.email}</p>
 
+      {/* Formularz rezerwacji — ukryty dla właściciela usługi */}
       {!isOwner && (
         <>
+          {/* Informacja dla niezalogowanych */}
+          {!user && (
+            <InfoMessage message="Zaloguj się, żeby zarezerwować termin." />
+          )}
+
+          {/* Wybór daty — zmiana trigguje fetch slotów; tutaj resetujemy też stan slotów
+              żeby uniknąć synchronicznych setState wewnątrz useEffect */}
           <input
             type="date"
             value={date}
             onChange={(e) => {
               setDate(e.target.value);
+              setSlots([]);
+              setSlotsLoaded(false);
               setSelectedSlot(null);
+              setBookingError("");
+              setBookingSuccess(false);
             }}
           />
 
+          {/* Brak dostępności w tym dniu — provider nie pracuje */}
+          {slotsLoaded && slots.length === 0 && (
+            <InfoMessage message="Usługodawca nie przyjmuje w tym dniu. Wybierz inną datę." />
+          )}
+
+          {/* Są sloty, ale wszystkie zajęte */}
+          {slotsLoaded && slots.length > 0 && availableCount === 0 && (
+            <InfoMessage message="Wszystkie terminy w tym dniu są już zajęte. Wybierz inną datę." />
+          )}
+
+          {/* Siatka przycisków z dostępnymi godzinami */}
           <div className="slots-container">
             {slots.map((slot) => {
+              // Wycinamy tylko część godzinową z timestampa
               const time = slot.time.split("T")[1];
-
               const isAvailable = !!slot.available;
               const isSelected = selectedSlot === slot.time;
 
@@ -108,7 +154,7 @@ function ServiceDetails() {
                     if (!isAvailable) return;
                     setSelectedSlot(slot.time);
                   }}
-                  className={`slot-btn 
+                  className={`slot-btn
                     ${!isAvailable ? "slot-disabled" : ""}
                     ${isSelected ? "slot-selected" : ""}
                   `}
@@ -119,13 +165,22 @@ function ServiceDetails() {
             })}
           </div>
 
-          <button
-            className="book-btn"
-            onClick={book}
-            disabled={!selectedSlot}
-          >
-            Zarezerwuj
-          </button>
+          {bookingError && <ErrorMessage message={bookingError} />}
+
+          {bookingSuccess && (
+            <InfoMessage message="Rezerwacja została potwierdzona!" />
+          )}
+
+          {/* Przycisk "Zarezerwuj" aktywny tylko gdy wybrano slot */}
+          {user && (
+            <button
+              className="book-btn"
+              onClick={book}
+              disabled={!selectedSlot}
+            >
+              Zarezerwuj
+            </button>
+          )}
         </>
       )}
     </div>

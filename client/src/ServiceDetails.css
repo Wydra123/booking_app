@@ -1,7 +1,9 @@
+/* Główny kontener strony szczegółów usługi */
 .service-container {
   padding: 20px;
 }
 
+/* Siatka slotów godzinowych — wyświetlana jako flexbox z zawijaniem */
 .slots-container {
   margin-top: 20px;
   display: flex;
@@ -9,6 +11,7 @@
   gap: 10px;
 }
 
+/* Bazowy styl przycisku slotu — domyślnie dostępny (zielony tekst) */
 .slot-btn {
   padding: 10px 15px;
   border-radius: 8px;
@@ -21,15 +24,17 @@
 
 .slot-btn:hover {
   background: #f0f0f0;
-  color: #4caf50;  
+  color: #4caf50;
 }
 
+/* Wybrany slot — zielone wypełnienie */
 .slot-selected {
   background: #4caf50;
   color: white;
   border-color: #4caf50;
 }
 
+/* Zajęty slot — szary, nieklikalny */
 .slot-disabled {
   background: #ddd;
   color: #888;
@@ -37,6 +42,7 @@
   pointer-events: none;
 }
 
+/* Przycisk potwierdzenia rezerwacji */
 .book-btn {
   margin-top: 20px;
   padding: 10px 20px;
@@ -47,7 +53,7 @@
   cursor: pointer;
 }
 
-
+/* Przycisk dezaktywowany — gdy żaden slot nie jest wybrany */
 .book-btn:disabled {
   background: #aaa;
   cursor: not-allowed;

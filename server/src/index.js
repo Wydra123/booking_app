@@ -57,8 +57,20 @@ app.get("/db", async (req, res) => {
 app.post("/register", async (req, res) => {
   const { email, password } = req.body;
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email i hasło są wymagane." });
+  }
 
+  // sprawdź czy email już istnieje
+  const existing = await pool.query(
+    "SELECT id FROM users WHERE email = $1",
+    [email]
+  );
+  if (existing.rows.length > 0) {
+    return res.status(400).json({ error: "Konto z tym adresem email już istnieje." });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
   const result = await pool.query(
     "INSERT INTO users (email, password, role) VALUES ($1, $2, 'client') RETURNING *",
     [email, hashedPassword]
@@ -77,13 +89,13 @@ app.post("/login", async (req, res) => {
   );
 
   if (user.rows.length === 0) {
-    return res.status(400).json({ error: "User not found" });
+    return res.status(400).json({ error: "Nie znaleziono użytkownika o podanym emailu." });
   }
 
   const valid = await bcrypt.compare(password, user.rows[0].password);
 
   if (!valid) {
-    return res.status(400).json({ error: "Wrong password" });
+    return res.status(400).json({ error: "Nieprawidłowe hasło." });
   }
 
   const token = jwt.sign(
