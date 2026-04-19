@@ -20,6 +20,18 @@ const pool = new Pool({
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+
+// Transporter SMTP — dane logowania z .env
+const mailer = nodemailer.createTransport({
+  host: process.env.MAIL_HOST,
+  port: Number(process.env.MAIL_PORT),
+  secure: false,
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+  },
+});
 
 // Klucz do podpisywania tokenów JWT — powinien być w .env na produkcji
 const SECRET = "SECRET_KEY";
@@ -55,6 +67,32 @@ pool.query(`
     updated_at timestamp without time zone DEFAULT now()
   )
 `).catch((err) => console.error("Błąd tworzenia tabeli user_profiles:", err));
+
+
+// Usuwa konto zalogowanego użytkownika wraz ze wszystkimi powiązanymi danymi
+app.delete("/account", authMiddleware, async (req, res) => {
+  const userId = req.user.userId;
+
+  // Pobieramy id usług użytkownika, żeby usunąć ich dostępność i rezerwacje
+  const services = await pool.query(
+    "SELECT id FROM services WHERE user_id = $1",
+    [userId]
+  );
+  const serviceIds = services.rows.map((s) => s.id);
+
+  if (serviceIds.length > 0) {
+    await pool.query("DELETE FROM availability WHERE service_id = ANY($1)", [serviceIds]);
+    await pool.query("DELETE FROM appointments WHERE service_id = ANY($1)", [serviceIds]);
+  }
+
+  // Usuwamy rezerwacje złożone przez użytkownika, profil i usługi
+  await pool.query("DELETE FROM appointments WHERE user_id = $1", [userId]);
+  await pool.query("DELETE FROM user_profiles WHERE user_id = $1", [userId]);
+  await pool.query("DELETE FROM services WHERE user_id = $1", [userId]);
+  await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+
+  res.send("Deleted");
+});
 
 
 // Zwraca profil zalogowanego użytkownika (imię, nazwisko, telefon)
@@ -127,6 +165,14 @@ app.post("/register", async (req, res) => {
     "INSERT INTO users (email, password, role) VALUES ($1, $2, 'client') RETURNING *",
     [email, hashedPassword]
   );
+
+  // Wysyłamy mail powitalny — błąd maila nie blokuje rejestracji
+  mailer.sendMail({
+    from: process.env.MAIL_FROM,
+    to: email,
+    subject: "Witamy w serwisie!",
+    text: `Cześć!\n\nTwoje konto zostało pomyślnie utworzone.\nMożesz się teraz zalogować pod adresem: ${email}\n\nPozdrawiamy,\nZespół serwisu`,
+  }).catch((err) => console.error("Błąd wysyłania maila powitalnego:", err));
 
   res.json(result.rows[0]);
 });

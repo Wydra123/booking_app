@@ -99,6 +99,25 @@ function Profile() {
 
         {saved && <p style={{ color: "green" }}>Dane zostały zapisane.</p>}
         {error && <p style={{ color: "red" }}>{error}</p>}
+
+        <hr style={{ marginTop: "24px" }} />
+
+        <button
+          onClick={async () => {
+            if (!window.confirm("Czy na pewno chcesz usunąć konto? Tej operacji nie można cofnąć.")) return;
+            const token = localStorage.getItem("token");
+            await fetch(`${API_URL}/account`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            localStorage.removeItem("token");
+            window.dispatchEvent(new Event("authChanged"));
+            navigate("/");
+          }}
+          style={{ padding: "8px", background: "#e53935", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}
+        >
+          Usuń konto
+        </button>
       </div>
     </div>
   );
