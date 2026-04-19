@@ -59,7 +59,7 @@ function Profile() {
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "400px" }}>
+    <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
       <h1>Mój profil</h1>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -69,7 +69,7 @@ function Profile() {
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             placeholder="Imię"
-            style={{ display: "block", marginTop: "4px", padding: "8px", width: "100%" }}
+            style={{ display: "block", marginTop: "4px", padding: "12px", width: "100%", fontSize: "16px" }}
           />
         </label>
 
@@ -79,7 +79,7 @@ function Profile() {
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             placeholder="Nazwisko"
-            style={{ display: "block", marginTop: "4px", padding: "8px", width: "100%" }}
+            style={{ display: "block", marginTop: "4px", padding: "12px", width: "100%", fontSize: "16px" }}
           />
         </label>
 
@@ -89,7 +89,7 @@ function Profile() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+48 000 000 000"
-            style={{ display: "block", marginTop: "4px", padding: "8px", width: "100%" }}
+            style={{ display: "block", marginTop: "4px", padding: "12px", width: "100%", fontSize: "16px" }}
           />
         </label>
 
