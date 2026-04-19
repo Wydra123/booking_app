@@ -4,7 +4,18 @@ import { useNavigate } from "react-router-dom";
 // Adres backendu pobierany ze zmiennej środowiskowej Vite
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Panel usługodawcy — przeglądanie, dodawanie i usuwanie własnych usług
+// Szablon 7 dni tygodnia (0=Pn … 6=Nd), domyślnie wszystkie wyłączone
+const daysTemplate = [
+  { day: 0, label: "Pn", enabled: false, start: "", end: "" },
+  { day: 1, label: "Wt", enabled: false, start: "", end: "" },
+  { day: 2, label: "Śr", enabled: false, start: "", end: "" },
+  { day: 3, label: "Czw", enabled: false, start: "", end: "" },
+  { day: 4, label: "Pt", enabled: false, start: "", end: "" },
+  { day: 5, label: "Sb", enabled: false, start: "", end: "" },
+  { day: 6, label: "Nd", enabled: false, start: "", end: "" },
+];
+
+// Panel usługodawcy — przeglądanie, dodawanie, edytowanie i usuwanie własnych usług
 function MyServices() {
   const [services, setServices] = useState([]);
 
@@ -12,20 +23,14 @@ function MyServices() {
   const [name, setName] = useState("");
   const [duration, setDuration] = useState("");
   const [price, setPrice] = useState("");
-
-  // Szablon dostępności — 7 dni tygodnia (0=Pn … 6=Nd), domyślnie wszystkie wyłączone
-  const daysTemplate = [
-    { day: 0, label: "Pn", enabled: false, start: "", end: "" },
-    { day: 1, label: "Wt", enabled: false, start: "", end: "" },
-    { day: 2, label: "Śr", enabled: false, start: "", end: "" },
-    { day: 3, label: "Czw", enabled: false, start: "", end: "" },
-    { day: 4, label: "Pt", enabled: false, start: "", end: "" },
-    { day: 5, label: "Sb", enabled: false, start: "", end: "" },
-    { day: 6, label: "Nd", enabled: false, start: "", end: "" },
-  ];
-
-  // Stan dostępności — kopia szablonu modyfikowana przez checkboxy i inputy czasu
   const [availability, setAvailability] = useState(daysTemplate);
+
+  // Stan edycji — id edytowanej usługi oraz pola formularza edycji
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editDuration, setEditDuration] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editAvailability, setEditAvailability] = useState(daysTemplate);
 
   const navigate = useNavigate();
 
@@ -49,6 +54,16 @@ function MyServices() {
       .catch((err) => console.error(err));
   }, [navigate]);
 
+  // Pobiera listę usług providera i aktualizuje stan
+  const refreshServices = async () => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/my-services`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setServices(data);
+  };
+
   // Dodaje nową usługę — wysyła dane formularza + dostępność do API,
   // po sukcesie odświeża listę i resetuje formularz
   const addService = async () => {
@@ -58,11 +73,6 @@ function MyServices() {
       alert("Uzupełnij wszystkie pola");
       return;
     }
-
-    // Wysyłamy tylko dni, które mają zaznaczony checkbox i uzupełnione godziny
-    const filteredAvailability = availability.filter(
-      (d) => d.enabled && d.start && d.end
-    );
 
     const res = await fetch(`${API_URL}/services`, {
       method: "POST",
@@ -74,7 +84,7 @@ function MyServices() {
         name,
         duration,
         price,
-        availability: filteredAvailability,
+        availability: availability.filter((d) => d.enabled && d.start && d.end),
       }),
     });
 
@@ -85,15 +95,7 @@ function MyServices() {
       return;
     }
 
-    // Pobieramy świeżą listę z backendu zamiast dopisywać lokalnie
-    const refresh = await fetch(`${API_URL}/my-services`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const refreshedData = await refresh.json();
-    setServices(refreshedData);
+    await refreshServices();
 
     // Czyszczenie formularza po dodaniu
     setName("");
@@ -102,8 +104,74 @@ function MyServices() {
     setAvailability(daysTemplate);
   };
 
+  // Otwiera formularz edycji dla wybranej usługi, pobierając jej aktualną dostępność
+  const startEdit = async (service, e) => {
+    e.stopPropagation();
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API_URL}/services/${service.id}/availability`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const availData = await res.json();
+
+    // Nakładamy istniejące dane dostępności na szablon 7 dni
+    const filled = daysTemplate.map((d) => {
+      const existing = availData.find((a) => a.day_of_week === d.day);
+      if (existing) {
+        return {
+          ...d,
+          enabled: true,
+          start: existing.start_time.slice(0, 5),
+          end: existing.end_time.slice(0, 5),
+        };
+      }
+      return { ...d };
+    });
+
+    setEditingId(service.id);
+    setEditName(service.name);
+    setEditDuration(String(service.duration));
+    setEditPrice(String(service.price));
+    setEditAvailability(filled);
+  };
+
+  // Zapisuje zmiany edytowanej usługi
+  const saveEdit = async (id, e) => {
+    e.stopPropagation();
+    const token = localStorage.getItem("token");
+
+    if (!editName || !editDuration || !editPrice) {
+      alert("Uzupełnij wszystkie pola");
+      return;
+    }
+
+    const res = await fetch(`${API_URL}/services/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: editName,
+        duration: editDuration,
+        price: editPrice,
+        availability: editAvailability.filter((d) => d.enabled && d.start && d.end),
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || "Błąd edycji");
+      return;
+    }
+
+    await refreshServices();
+    setEditingId(null);
+  };
+
   // Usuwa usługę po stronie API i lokalnie aktualizuje listę
-  const deleteService = async (id) => {
+  const deleteService = async (id, e) => {
+    e.stopPropagation();
     const token = localStorage.getItem("token");
 
     await fetch(`${API_URL}/services/${id}`, {
@@ -114,7 +182,56 @@ function MyServices() {
     });
 
     setServices((prev) => prev.filter((s) => s.id !== id));
+    if (editingId === id) setEditingId(null);
   };
+
+  // Pomocniczy renderer siatki dostępności (współdzielony przez formularz dodawania i edycji)
+  const renderAvailabilityGrid = (avail, setAvail) => (
+    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+      {avail.map((d, i) => (
+        <div
+          key={d.day}
+          style={{ border: "1px solid #ccc", padding: "8px", borderRadius: "6px" }}
+        >
+          <label>
+            <input
+              type="checkbox"
+              checked={d.enabled}
+              onChange={(e) => {
+                const updated = [...avail];
+                updated[i] = { ...updated[i], enabled: e.target.checked };
+                setAvail(updated);
+              }}
+            />
+            {d.label}
+          </label>
+
+          {d.enabled && (
+            <div>
+              <input
+                type="time"
+                value={d.start}
+                onChange={(e) => {
+                  const updated = [...avail];
+                  updated[i] = { ...updated[i], start: e.target.value };
+                  setAvail(updated);
+                }}
+              />
+              <input
+                type="time"
+                value={d.end}
+                onChange={(e) => {
+                  const updated = [...avail];
+                  updated[i] = { ...updated[i], end: e.target.value };
+                  setAvail(updated);
+                }}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div style={{ padding: "20px" }}>
@@ -143,94 +260,92 @@ function MyServices() {
         />
 
         <h3>Dostępność</h3>
-
-        {/* Siatka dni tygodnia — checkbox włącza widoczność pól godzinowych */}
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
-        >
-          {availability.map((d, i) => (
-            <div
-              key={d.day}
-              style={{
-                border: "1px solid #ccc",
-                padding: "8px",
-                borderRadius: "6px",
-              }}
-            >
-              <label>
-                <input
-                  type="checkbox"
-                  checked={d.enabled}
-                  onChange={(e) => {
-                    const updated = [...availability];
-                    updated[i].enabled = e.target.checked;
-                    setAvailability(updated);
-                  }}
-                />
-                {d.label}
-              </label>
-
-              {/* Pola godzin start/end pojawiają się tylko gdy dzień jest włączony */}
-              {d.enabled && (
-                <div>
-                  <input
-                    type="time"
-                    value={d.start}
-                    onChange={(e) => {
-                      const updated = [...availability];
-                      updated[i].start = e.target.value;
-                      setAvailability(updated);
-                    }}
-                  />
-
-                  <input
-                    type="time"
-                    value={d.end}
-                    onChange={(e) => {
-                      const updated = [...availability];
-                      updated[i].end = e.target.value;
-                      setAvailability(updated);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        {renderAvailabilityGrid(availability, setAvailability)}
 
         <button onClick={addService}>Dodaj</button>
       </div>
 
-      {/* Lista istniejących usług — klik na kafelek prowadzi do szczegółów */}
+      {/* Lista istniejących usług */}
       {services.map((service) => (
-        <div
-          key={service.id}
-          onClick={() => navigate(`/service/${service.id}`)}
-          style={{
-            cursor: "pointer",
-            border: "1px solid #ccc",
-            padding: "10px",
-            marginBottom: "10px",
-            borderRadius: "8px",
-          }}
-        >
-          <h3>{service.name}</h3>
-          <p>⏱ {service.duration} min</p>
-          <p>💰 {service.price} zł</p>
-
-          {/* stopPropagation zapobiega przejściu do szczegółów przy kliknięciu "Usuń" */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              deleteService(service.id);
+        <div key={service.id}>
+          <div
+            onClick={() => navigate(`/service/${service.id}`)}
+            style={{
+              cursor: "pointer",
+              border: "1px solid #ccc",
+              padding: "10px",
+              marginBottom: editingId === service.id ? "0" : "10px",
+              borderRadius: editingId === service.id ? "8px 8px 0 0" : "8px",
             }}
           >
-            Usuń
-          </button>
+            <h3>{service.name}</h3>
+            <p>⏱ {service.duration} min</p>
+            <p>💰 {service.price} zł</p>
+
+            {/* stopPropagation zapobiega przejściu do szczegółów przy akcjach */}
+            <button
+              onClick={(e) => startEdit(service, e)}
+              style={{ marginRight: "8px" }}
+            >
+              Edytuj
+            </button>
+            <button onClick={(e) => deleteService(service.id, e)}>Usuń</button>
+          </div>
+
+          {/* Formularz edycji — widoczny tylko dla aktualnie edytowanej usługi */}
+          {editingId === service.id && (
+            <div
+              style={{
+                border: "1px solid #ccc",
+                borderTop: "none",
+                padding: "12px",
+                marginBottom: "10px",
+                borderRadius: "0 0 8px 8px",
+                background: "#f9f9f9",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ marginTop: 0 }}>Edytuj usługę</h3>
+
+              <input
+                placeholder="Nazwa"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+
+              <input
+                placeholder="Czas (min)"
+                value={editDuration}
+                onChange={(e) => setEditDuration(e.target.value)}
+              />
+
+              <input
+                placeholder="Cena"
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+              />
+
+              <h4>Dostępność</h4>
+              {renderAvailabilityGrid(editAvailability, setEditAvailability)}
+
+              <div style={{ marginTop: "10px" }}>
+                <button
+                  onClick={(e) => saveEdit(service.id, e)}
+                  style={{ marginRight: "8px" }}
+                >
+                  Zapisz
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingId(null);
+                  }}
+                >
+                  Anuluj
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>

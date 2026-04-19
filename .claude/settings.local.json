@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(iconv -f UTF-16LE -t UTF-8 /c/Users/Admin/Desktop/projekt_web/Project-N/schema.sql)"
+    ]
+  }
+}

@@ -203,6 +203,52 @@ app.get("/services/:id", async (req, res) => {
 });
 
 
+// Aktualizuje usługę — tylko właściciel może edytować (warunek user_id)
+// Usuwa starą dostępność i wstawia nową na podstawie przesłanej tablicy
+app.put("/services/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.userId;
+  const { name, duration, price, availability } = req.body;
+
+  const check = await pool.query(
+    "SELECT id FROM services WHERE id = $1 AND user_id = $2",
+    [id, userId]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(403).json({ error: "Brak uprawnień" });
+  }
+
+  const result = await pool.query(
+    "UPDATE services SET name = $1, duration = $2, price = $3 WHERE id = $4 RETURNING *",
+    [name, duration, price, id]
+  );
+
+  await pool.query("DELETE FROM availability WHERE service_id = $1", [id]);
+
+  for (const day of availability) {
+    if (day.enabled) {
+      await pool.query(
+        "INSERT INTO availability (service_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)",
+        [id, day.day, day.start, day.end]
+      );
+    }
+  }
+
+  res.json(result.rows[0]);
+});
+
+
+// Zwraca dostępność dla danej usługi (używane przy edycji)
+app.get("/services/:id/availability", async (req, res) => {
+  const result = await pool.query(
+    "SELECT * FROM availability WHERE service_id = $1",
+    [req.params.id]
+  );
+  res.json(result.rows);
+});
+
+
 // Usuwa usługę — tylko właściciel może usunąć swoją usługę (warunek user_id = $2)
 app.delete("/services/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
