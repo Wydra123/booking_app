@@ -26,15 +26,20 @@ function ServiceDetails() {
   const [bookingError, setBookingError] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookings, setBookings] = useState([]);
+  const [availability, setAvailability] = useState([]);
 
   // Dane zalogowanego użytkownika (lub null jeśli niezalogowany)
   const user = getUserFromToken();
 
-  // Pobieramy dane usługi przy pierwszym renderze lub zmianie id
+  // Pobieramy dane usługi i dostępność przy pierwszym renderze lub zmianie id
   useEffect(() => {
     fetch(`${API_URL}/services/${id}`)
       .then((res) => res.json())
       .then(setService);
+
+    fetch(`${API_URL}/services/${id}/availability`)
+      .then((res) => res.json())
+      .then(setAvailability);
   }, [id]);
 
   // Pobieramy rezerwacje usługi — tylko gdy zalogowany użytkownik jest jej właścicielem
@@ -162,6 +167,38 @@ function ServiceDetails() {
           {/* Informacja dla niezalogowanych */}
           {!user && (
             <InfoMessage message="Zaloguj się, żeby zarezerwować termin." />
+          )}
+
+          {/* Dostępne dni tygodnia usługodawcy */}
+          {availability.length > 0 && (
+            <div style={{ marginBottom: "12px" }}>
+              <p style={{ marginBottom: "6px" }}>Dostępne dni:</p>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {["Pn", "Wt", "Śr", "Czw", "Pt", "Sb", "Nd"].map((label, i) => {
+                  const day = availability.find((a) => a.day_of_week === i);
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: "6px",
+                        border: "1px solid #ccc",
+                        background: day ? "#e6f4ea" : "#f5f5f5",
+                        color: day ? "#2a7a3b" : "#aaa",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <div style={{ fontWeight: "bold" }}>{label}</div>
+                      {day && (
+                        <div style={{ fontSize: "12px" }}>
+                          {day.start_time.slice(0, 5)}–{day.end_time.slice(0, 5)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           {/* Wybór daty — zmiana trigguje fetch slotów; tutaj resetujemy też stan slotów
