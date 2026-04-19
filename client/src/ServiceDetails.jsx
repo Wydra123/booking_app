@@ -103,7 +103,12 @@ function ServiceDetails() {
       <h1>{service.name}</h1>
       <p>⏱ {service.duration} min</p>
       <p>💰 {service.price} zł</p>
-      <p>👤 {service.email}</p>
+      {(service.first_name || service.last_name) ? (
+        <p>👤 {[service.first_name, service.last_name].filter(Boolean).join(" ")}</p>
+      ) : (
+        <p>👤 {service.email}</p>
+      )}
+      {service.phone && <p>📞 {service.phone}</p>}
 
       {/* Formularz rezerwacji — ukryty dla właściciela usługi */}
       {!isOwner && (

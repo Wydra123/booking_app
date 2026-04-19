@@ -234,7 +234,12 @@ app.get("/services/:id", async (req, res) => {
   const { id } = req.params;
 
   const result = await pool.query(
-    "SELECT services.*, users.email FROM services JOIN users ON services.user_id = users.id WHERE services.id = $1",
+    `SELECT services.*, users.email,
+            up.first_name, up.last_name, up.phone
+     FROM services
+     JOIN users ON services.user_id = users.id
+     LEFT JOIN user_profiles up ON up.user_id = users.id
+     WHERE services.id = $1`,
     [id]
   );
 
