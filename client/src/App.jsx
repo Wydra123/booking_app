@@ -8,6 +8,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 function App() {
   const [services, setServices] = useState([]);
   const [query, setQuery] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [maxDuration, setMaxDuration] = useState("");
   const navigate = useNavigate();
 
   // Przy pierwszym renderze pobieramy wszystkie usługi z API
@@ -19,20 +21,39 @@ function App() {
   }, []);
 
   // Filtrujemy lokalnie — bez dodatkowego requestu do backendu
-  const filtered = services.filter((s) =>
-    s.name.toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = services.filter((s) => {
+    if (!s.name.toLowerCase().includes(query.toLowerCase())) return false;
+    if (maxPrice !== "" && s.price > Number(maxPrice)) return false;
+    if (maxDuration !== "" && s.duration > Number(maxDuration)) return false;
+    return true;
+  });
 
   return (
     <div style={{ padding: "20px" }}>
       <h1>Usługi</h1>
 
-      <input
-        placeholder="Szukaj usługi..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        style={{ marginBottom: "16px", padding: "8px", width: "300px" }}
-      />
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "16px", justifyContent: "center" }}>
+        <input
+          placeholder="Szukaj usługi..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ padding: "8px", width: "220px" }}
+        />
+        <input
+          type="number"
+          placeholder="Maks. cena (zł)"
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(e.target.value)}
+          style={{ padding: "8px", width: "150px" }}
+        />
+        <input
+          type="number"
+          placeholder="Maks. czas (min)"
+          value={maxDuration}
+          onChange={(e) => setMaxDuration(e.target.value)}
+          style={{ padding: "8px", width: "150px" }}
+        />
+      </div>
 
       {filtered.length === 0 && query && (
         <p>Brak wyników dla „{query}"</p>
