@@ -52,6 +52,27 @@ const mailer = nodemailer.createTransport({
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: false,
+  },
+  debug: true,
+  logger: true,
+});
+
+console.log("[MAIL] Konfiguracja SMTP:", {
+  host: process.env.MAIL_HOST,
+  port: process.env.MAIL_PORT,
+  user: process.env.MAIL_USER,
+  from: process.env.MAIL_FROM,
+  passSet: !!process.env.MAIL_PASS,
+});
+
+mailer.verify((err, success) => {
+  if (err) {
+    console.error("[MAIL] Błąd weryfikacji połączenia SMTP:", err.message);
+  } else {
+    console.log("[MAIL] Połączenie SMTP zweryfikowane pomyślnie:", success);
+  }
 });
 
 // Klucz do podpisywania tokenów JWT — powinien być w .env na produkcji
@@ -188,12 +209,18 @@ app.post("/register", async (req, res) => {
   );
 
   // Wysyłamy mail powitalny — błąd maila nie blokuje rejestracji
+  console.log(`[MAIL] Próba wysłania maila powitalnego do: ${email}`);
   mailer.sendMail({
     from: process.env.MAIL_FROM,
     to: email,
     subject: "Witamy w serwisie!",
     text: `Cześć!\n\nTwoje konto zostało pomyślnie utworzone.\nMożesz się teraz zalogować pod adresem: ${email}\n\nPozdrawiamy,\nZespół serwisu`,
-  }).catch((err) => console.error("Błąd wysyłania maila powitalnego:", err));
+  }).then((info) => {
+    console.log(`[MAIL] Mail powitalny wysłany do ${email}. MessageId: ${info.messageId}, Response: ${info.response}`);
+  }).catch((err) => {
+    console.error(`[MAIL] Błąd wysyłania maila do ${email}:`, err.message);
+    console.error("[MAIL] Szczegóły błędu:", err);
+  });
 
   res.json(result.rows[0]);
 });
