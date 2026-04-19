@@ -7,6 +7,24 @@ app.use(express.json()); // Parsowanie ciała żądań jako JSON
 const cors = require("cors");
 app.use(cors()); // Zezwolenie na żądania cross-origin (frontend na innym porcie)
 
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
+
+const uploadsDir = path.join(__dirname, "../uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+app.use("/uploads", express.static(uploadsDir));
+
 const { Pool } = require("pg");
 
 // Pula połączeń z bazą PostgreSQL — dane logowania z .env
@@ -17,6 +35,8 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   port: 5432,
 });
+
+pool.query("ALTER TABLE services ADD COLUMN IF NOT EXISTS image_url TEXT").catch(() => {});
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -237,6 +257,13 @@ app.post("/become-provider", authMiddleware, async (req, res) => {
 });
 
 
+// Upload zdjęcia usługi — zwraca URL zapisanego pliku
+app.post("/upload", authMiddleware, upload.single("image"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Brak pliku" });
+  res.json({ url: `/uploads/${req.file.filename}` });
+});
+
+
 // Zwraca wszystkie dostępne usługi (publiczny endpoint — bez autoryzacji)
 app.get("/services", async (req, res) => {
   const result = await pool.query("SELECT * FROM services");
@@ -251,12 +278,12 @@ app.post("/services", authMiddleware, async (req, res) => {
     return res.status(403).json({ error: "Only providers can add services" });
   }
 
-  const { name, duration, price, availability } = req.body;
+  const { name, duration, price, availability, image_url } = req.body;
   const userId = req.user.userId;
 
   const service = await pool.query(
-    "INSERT INTO services (name, duration, price, user_id) VALUES ($1, $2, $3, $4) RETURNING *",
-    [name, duration, price, userId]
+    "INSERT INTO services (name, duration, price, user_id, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+    [name, duration, price, userId, image_url || null]
   );
 
   const serviceId = service.rows[0].id;
@@ -302,7 +329,7 @@ app.get("/services/:id", async (req, res) => {
 app.put("/services/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
-  const { name, duration, price, availability } = req.body;
+  const { name, duration, price, availability, image_url } = req.body;
 
   const check = await pool.query(
     "SELECT id FROM services WHERE id = $1 AND user_id = $2",
@@ -314,8 +341,8 @@ app.put("/services/:id", authMiddleware, async (req, res) => {
   }
 
   const result = await pool.query(
-    "UPDATE services SET name = $1, duration = $2, price = $3 WHERE id = $4 RETURNING *",
-    [name, duration, price, id]
+    "UPDATE services SET name = $1, duration = $2, price = $3, image_url = $4 WHERE id = $5 RETURNING *",
+    [name, duration, price, image_url !== undefined ? image_url : null, id]
   );
 
   await pool.query("DELETE FROM availability WHERE service_id = $1", [id]);
