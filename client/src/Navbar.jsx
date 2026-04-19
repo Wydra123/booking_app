@@ -55,9 +55,16 @@ function Navbar() {
       {/* Widoczny dla każdego zalogowanego użytkownika — przejście do listy rezerwacji */}
       {token && (
         <button onClick={() => navigate("/my-appointments")}>
-            Moje rezerwacje
+          Moje rezerwacje
         </button>
-        )}
+      )}
+
+      {/* Widoczny dla każdego zalogowanego użytkownika — przejście do profilu */}
+      {token && (
+        <button onClick={() => navigate("/profile")}>
+          Mój profil
+        </button>
+      )}
 
         {/* Widoczny tylko dla klienta — wysyła żądanie do API o zmianę roli na provider,
             po odpowiedzi zapisuje nowy token i emituje zdarzenie authChanged */}

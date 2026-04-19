@@ -45,6 +45,49 @@ const authMiddleware = (req, res, next) => {
 };
 
 
+// Tworzy tabelę profili jeśli jeszcze nie istnieje — uruchamiane raz przy starcie serwera
+pool.query(`
+  CREATE TABLE IF NOT EXISTS public.user_profiles (
+    user_id integer PRIMARY KEY REFERENCES public.users(id),
+    first_name text,
+    last_name text,
+    phone text,
+    updated_at timestamp without time zone DEFAULT now()
+  )
+`).catch((err) => console.error("Błąd tworzenia tabeli user_profiles:", err));
+
+
+// Zwraca profil zalogowanego użytkownika (imię, nazwisko, telefon)
+app.get("/profile", authMiddleware, async (req, res) => {
+  const userId = req.user.userId;
+
+  const result = await pool.query(
+    "SELECT * FROM user_profiles WHERE user_id = $1",
+    [userId]
+  );
+
+  res.json(result.rows[0] || {});
+});
+
+
+// Zapisuje lub aktualizuje profil zalogowanego użytkownika (upsert)
+app.put("/profile", authMiddleware, async (req, res) => {
+  const userId = req.user.userId;
+  const { first_name, last_name, phone } = req.body;
+
+  const result = await pool.query(
+    `INSERT INTO user_profiles (user_id, first_name, last_name, phone, updated_at)
+     VALUES ($1, $2, $3, $4, now())
+     ON CONFLICT (user_id) DO UPDATE
+       SET first_name = $2, last_name = $3, phone = $4, updated_at = now()
+     RETURNING *`,
+    [userId, first_name, last_name, phone]
+  );
+
+  res.json(result.rows[0]);
+});
+
+
 // Healthcheck — sprawdzenie czy serwer działa
 app.get("/", (req, res) => {
   res.send("Backend działa 🚀");

@@ -7,6 +7,7 @@ import Register from "./Register";
 import MyServices from "./MyServices";
 import ServiceDetails from "./ServiceDetails";
 import MyAppointments from "./MyAppointments";
+import Profile from "./Profile";
 
 // Główny router aplikacji — definiuje wszystkie ścieżki i renderuje Navbar nad każdą stroną
 function AppRouter() {
@@ -30,6 +31,9 @@ function AppRouter() {
 
         {/* Lista rezerwacji zalogowanego użytkownika */}
         <Route path="/my-appointments" element={<MyAppointments />} />
+
+        {/* Profil użytkownika — dane osobowe */}
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </BrowserRouter>
   );
