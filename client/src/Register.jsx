@@ -8,7 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Komunikat błędu wyświetlany pod formularzem
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -16,12 +16,16 @@ function Register() {
     setError("");
 
     // Walidacja po stronie klienta przed wysłaniem żądania
-    if (!email || !password) {
+    if (!email || !password || !confirmPassword) {
       setError("Wypełnij wszystkie pola.");
       return;
     }
     if (password.length < 6) {
       setError("Hasło musi mieć co najmniej 6 znaków.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Hasła nie są identyczne.");
       return;
     }
 
@@ -49,6 +53,7 @@ function Register() {
       <ErrorMessage message={error} />
       <input onChange={(e) => setEmail(e.target.value)} placeholder="email" />
       <input type="password" onChange={(e) => setPassword(e.target.value)} placeholder="hasło" />
+      <input type="password" onChange={(e) => setConfirmPassword(e.target.value)} placeholder="powtórz hasło" />
       <button onClick={register}>Zarejestruj się</button>
     </div>
   );
