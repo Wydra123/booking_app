@@ -25,6 +25,7 @@ function ServiceDetails() {
   const [slotsLoaded, setSlotsLoaded] = useState(false);
   const [bookingError, setBookingError] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookings, setBookings] = useState([]);
 
   // Dane zalogowanego użytkownika (lub null jeśli niezalogowany)
   const user = getUserFromToken();
@@ -35,6 +36,18 @@ function ServiceDetails() {
       .then((res) => res.json())
       .then(setService);
   }, [id]);
+
+  // Pobieramy rezerwacje usługi — tylko gdy zalogowany użytkownik jest jej właścicielem
+  useEffect(() => {
+    if (!service || !user || user.userId !== service.user_id) return;
+    const token = localStorage.getItem("token");
+    fetch(`${API_URL}/services/${id}/bookings`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(setBookings)
+      .catch((err) => console.error(err));
+  }, [service, id, user?.userId]);
 
   // Gdy użytkownik zmieni datę — pobieramy dostępne sloty dla tej daty
   // Reset stanu (slots, slotsLoaded, selectedSlot) odbywa się w onChange daty,
@@ -109,6 +122,39 @@ function ServiceDetails() {
         <p>👤 {service.email}</p>
       )}
       {service.phone && <p>📞 {service.phone}</p>}
+
+      {/* Lista rezerwacji — widoczna tylko dla właściciela usługi */}
+      {isOwner && (
+        <div style={{ marginTop: "24px" }}>
+          <h2>Rezerwacje</h2>
+          {bookings.length === 0 ? (
+            <p>Brak rezerwacji.</p>
+          ) : (
+            bookings.map((b) => {
+              const date = b.appointment_time.split("T")[0];
+              const timeStart = b.appointment_time.split("T")[1];
+              const timeEnd = b.end_time.split("T")[1];
+              const name = [b.first_name, b.last_name].filter(Boolean).join(" ");
+              return (
+                <div
+                  key={b.id}
+                  style={{
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    padding: "10px",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <p>📅 {date} &nbsp; 🕐 {timeStart} – {timeEnd}</p>
+                  <p>👤 {name || b.email}</p>
+                  {name && <p style={{ color: "#666", fontSize: "14px" }}>{b.email}</p>}
+                  {b.phone && <p>📞 {b.phone}</p>}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Formularz rezerwacji — ukryty dla właściciela usługi */}
       {!isOwner && (

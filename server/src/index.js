@@ -287,6 +287,36 @@ app.put("/services/:id", authMiddleware, async (req, res) => {
 });
 
 
+// Zwraca rezerwacje danej usługi wraz z danymi klientów — tylko dla właściciela usługi
+app.get("/services/:id/bookings", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.userId;
+
+  const check = await pool.query(
+    "SELECT id FROM services WHERE id = $1 AND user_id = $2",
+    [id, userId]
+  );
+
+  if (check.rows.length === 0) {
+    return res.status(403).json({ error: "Brak uprawnień" });
+  }
+
+  const result = await pool.query(
+    `SELECT appointments.id, appointments.appointment_time, appointments.end_time,
+            users.email,
+            up.first_name, up.last_name, up.phone
+     FROM appointments
+     JOIN users ON appointments.user_id = users.id
+     LEFT JOIN user_profiles up ON up.user_id = users.id
+     WHERE appointments.service_id = $1
+     ORDER BY appointments.appointment_time ASC`,
+    [id]
+  );
+
+  res.json(result.rows);
+});
+
+
 // Zwraca dostępność dla danej usługi (używane przy edycji)
 app.get("/services/:id/availability", async (req, res) => {
   const result = await pool.query(
