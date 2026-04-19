@@ -222,7 +222,7 @@ function MyServices() {
 
   // Pomocniczy renderer siatki dostępności (współdzielony przez formularz dodawania i edycji)
   const renderAvailabilityGrid = (avail, setAvail) => (
-    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
       {avail.map((d, i) => (
         <div
           key={d.day}
