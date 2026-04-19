@@ -37,6 +37,7 @@ const pool = new Pool({
 });
 
 pool.query("ALTER TABLE services ADD COLUMN IF NOT EXISTS image_url TEXT").catch(() => {});
+pool.query("ALTER TABLE services ADD COLUMN IF NOT EXISTS description TEXT").catch(() => {});
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -278,12 +279,12 @@ app.post("/services", authMiddleware, async (req, res) => {
     return res.status(403).json({ error: "Only providers can add services" });
   }
 
-  const { name, duration, price, availability, image_url } = req.body;
+  const { name, duration, price, availability, image_url, description } = req.body;
   const userId = req.user.userId;
 
   const service = await pool.query(
-    "INSERT INTO services (name, duration, price, user_id, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-    [name, duration, price, userId, image_url || null]
+    "INSERT INTO services (name, duration, price, user_id, image_url, description) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+    [name, duration, price, userId, image_url || null, description || null]
   );
 
   const serviceId = service.rows[0].id;
@@ -329,7 +330,7 @@ app.get("/services/:id", async (req, res) => {
 app.put("/services/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
-  const { name, duration, price, availability, image_url } = req.body;
+  const { name, duration, price, availability, image_url, description } = req.body;
 
   const check = await pool.query(
     "SELECT id FROM services WHERE id = $1 AND user_id = $2",
@@ -341,8 +342,8 @@ app.put("/services/:id", authMiddleware, async (req, res) => {
   }
 
   const result = await pool.query(
-    "UPDATE services SET name = $1, duration = $2, price = $3, image_url = $4 WHERE id = $5 RETURNING *",
-    [name, duration, price, image_url !== undefined ? image_url : null, id]
+    "UPDATE services SET name = $1, duration = $2, price = $3, image_url = $4, description = $5 WHERE id = $6 RETURNING *",
+    [name, duration, price, image_url !== undefined ? image_url : null, description || null, id]
   );
 
   await pool.query("DELETE FROM availability WHERE service_id = $1", [id]);
