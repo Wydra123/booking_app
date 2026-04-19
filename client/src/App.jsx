@@ -64,7 +64,13 @@ function App() {
         <div
           key={service.id}
           onClick={() => navigate(`/service/${service.id}`)}
-          style={{ cursor: "pointer" }}
+          style={{
+            cursor: "pointer",
+            border: "1px solid #ccc",
+            padding: "10px",
+            marginBottom: "10px",
+            borderRadius: "8px",
+          }}
         >
           <h3>{service.name}</h3>
           <p>⏱ {service.duration} min</p>
