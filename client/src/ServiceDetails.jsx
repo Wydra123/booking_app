@@ -118,6 +118,21 @@ function ServiceDetails() {
 
   return (
     <div className="service-container">
+      {service.image_url && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+          <img
+            src={`${API_URL}${service.image_url}`}
+            alt={service.name}
+            style={{
+              width: "100%",
+              maxWidth: "400px",
+              height: "260px",
+              objectFit: "cover",
+              borderRadius: "10px",
+            }}
+          />
+        </div>
+      )}
       <h1>{service.name}</h1>
       <p>⏱ {service.duration} min</p>
       <p>💰 {service.price} zł</p>
@@ -127,6 +142,9 @@ function ServiceDetails() {
         <p>👤 {service.email}</p>
       )}
       {service.phone && <p>📞 {service.phone}</p>}
+      {service.description && (
+        <p style={{ marginTop: "12px", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{service.description}</p>
+      )}
 
       {/* Lista rezerwacji — widoczna tylko dla właściciela usługi */}
       {isOwner && (

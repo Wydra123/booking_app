@@ -24,6 +24,8 @@ function MyServices() {
   const [duration, setDuration] = useState("");
   const [price, setPrice] = useState("");
   const [availability, setAvailability] = useState(daysTemplate);
+  const [imageFile, setImageFile] = useState(null);
+  const [description, setDescription] = useState("");
 
   // Stan edycji — id edytowanej usługi oraz pola formularza edycji
   const [editingId, setEditingId] = useState(null);
@@ -31,6 +33,9 @@ function MyServices() {
   const [editDuration, setEditDuration] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editAvailability, setEditAvailability] = useState(daysTemplate);
+  const [editImageFile, setEditImageFile] = useState(null);
+  const [editImageUrl, setEditImageUrl] = useState(null);
+  const [editDescription, setEditDescription] = useState("");
 
   const navigate = useNavigate();
 
@@ -64,6 +69,19 @@ function MyServices() {
     setServices(data);
   };
 
+  // Wysyła plik na serwer i zwraca URL
+  const uploadImage = async (file, token) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await fetch(`${API_URL}/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    return data.url || null;
+  };
+
   // Dodaje nową usługę — wysyła dane formularza + dostępność do API,
   // po sukcesie odświeża listę i resetuje formularz
   const addService = async () => {
@@ -73,6 +91,9 @@ function MyServices() {
       alert("Uzupełnij wszystkie pola");
       return;
     }
+
+    let image_url = null;
+    if (imageFile) image_url = await uploadImage(imageFile, token);
 
     const res = await fetch(`${API_URL}/services`, {
       method: "POST",
@@ -84,6 +105,8 @@ function MyServices() {
         name,
         duration,
         price,
+        image_url,
+        description: description || null,
         availability: availability.filter((d) => d.enabled && d.start && d.end),
       }),
     });
@@ -102,6 +125,8 @@ function MyServices() {
     setDuration("");
     setPrice("");
     setAvailability(daysTemplate);
+    setImageFile(null);
+    setDescription("");
   };
 
   // Otwiera formularz edycji dla wybranej usługi, pobierając jej aktualną dostępność
@@ -133,6 +158,9 @@ function MyServices() {
     setEditDuration(String(service.duration));
     setEditPrice(String(service.price));
     setEditAvailability(filled);
+    setEditImageFile(null);
+    setEditImageUrl(service.image_url || null);
+    setEditDescription(service.description || "");
   };
 
   // Zapisuje zmiany edytowanej usługi
@@ -145,6 +173,9 @@ function MyServices() {
       return;
     }
 
+    let image_url = editImageUrl;
+    if (editImageFile) image_url = await uploadImage(editImageFile, token);
+
     const res = await fetch(`${API_URL}/services/${id}`, {
       method: "PUT",
       headers: {
@@ -155,6 +186,8 @@ function MyServices() {
         name: editName,
         duration: editDuration,
         price: editPrice,
+        image_url,
+        description: editDescription || null,
         availability: editAvailability.filter((d) => d.enabled && d.start && d.end),
       }),
     });
@@ -167,6 +200,8 @@ function MyServices() {
 
     await refreshServices();
     setEditingId(null);
+    setEditImageFile(null);
+    setEditImageUrl(null);
   };
 
   // Usuwa usługę po stronie API i lokalnie aktualizuje listę
@@ -259,6 +294,32 @@ function MyServices() {
           onChange={(e) => setPrice(e.target.value)}
         />
 
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "8px" }}>
+          <textarea
+            placeholder="Opis usługi (opcjonalnie)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            style={{ width: "100%", maxWidth: "400px", padding: "6px", resize: "vertical" }}
+          />
+        </div>
+
+        <div style={{ margin: "10px 0" }}>
+          <label style={{ display: "block", marginBottom: "4px" }}>Zdjęcie usługi</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImageFile(e.target.files[0] || null)}
+          />
+          {imageFile && (
+            <img
+              src={URL.createObjectURL(imageFile)}
+              alt="podgląd"
+              style={{ marginTop: "8px", width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px" }}
+            />
+          )}
+        </div>
+
         <h3>Dostępność</h3>
         {renderAvailabilityGrid(availability, setAvailability)}
 
@@ -301,7 +362,7 @@ function MyServices() {
                 padding: "12px",
                 marginBottom: "10px",
                 borderRadius: "0 0 8px 8px",
-                background: "#f9f9f9",
+                background: "#e8e8e8",
               }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -324,6 +385,39 @@ function MyServices() {
                 value={editPrice}
                 onChange={(e) => setEditPrice(e.target.value)}
               />
+
+              <div style={{ display: "flex", justifyContent: "center", marginTop: "8px" }}>
+                <textarea
+                  placeholder="Opis usługi (opcjonalnie)"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={3}
+                  style={{ width: "100%", maxWidth: "400px", padding: "6px", resize: "vertical" }}
+                />
+              </div>
+
+              <div style={{ margin: "10px 0" }}>
+                <label style={{ display: "block", marginBottom: "4px" }}>Zdjęcie usługi</label>
+                {editImageUrl && !editImageFile && (
+                  <img
+                    src={`${API_URL}${editImageUrl}`}
+                    alt="aktualne zdjęcie"
+                    style={{ display: "block", width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px", marginBottom: "6px" }}
+                  />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setEditImageFile(e.target.files[0] || null)}
+                />
+                {editImageFile && (
+                  <img
+                    src={URL.createObjectURL(editImageFile)}
+                    alt="podgląd"
+                    style={{ marginTop: "8px", width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px" }}
+                  />
+                )}
+              </div>
 
               <h4>Dostępność</h4>
               {renderAvailabilityGrid(editAvailability, setEditAvailability)}

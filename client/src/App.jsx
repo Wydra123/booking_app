@@ -60,23 +60,49 @@ function App() {
       )}
 
       {/* Każda usługa jest klikalnym kafelkiem prowadzącym do jej szczegółów */}
-      {filtered.map((service) => (
-        <div
-          key={service.id}
-          onClick={() => navigate(`/service/${service.id}`)}
-          style={{
-            cursor: "pointer",
-            border: "1px solid #ccc",
-            padding: "10px",
-            marginBottom: "10px",
-            borderRadius: "8px",
-          }}
-        >
-          <h3>{service.name}</h3>
-          <p>⏱ {service.duration} min</p>
-          <p>💰 {service.price} zł</p>
-        </div>
-      ))}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", justifyContent: "center" }}>
+        {filtered.map((service) => (
+          <div
+            key={service.id}
+            onClick={() => navigate(`/service/${service.id}`)}
+            style={{
+              cursor: "pointer",
+              border: "1px solid #ccc",
+              borderRadius: "10px",
+              width: "220px",
+              overflow: "hidden",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+            }}
+          >
+            <div
+              style={{
+                width: "220px",
+                height: "160px",
+                background: "#f0f0f0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+              }}
+            >
+              {service.image_url ? (
+                <img
+                  src={`${API_URL}${service.image_url}`}
+                  alt={service.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                <span style={{ fontSize: "48px", color: "#ccc" }}>🖼️</span>
+              )}
+            </div>
+            <div style={{ padding: "10px" }}>
+              <h3 style={{ margin: "0 0 6px" }}>{service.name}</h3>
+              <p style={{ margin: "2px 0" }}>⏱ {service.duration} min</p>
+              <p style={{ margin: "2px 0" }}>💰 {service.price} zł</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
