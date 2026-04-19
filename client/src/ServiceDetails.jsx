@@ -201,20 +201,53 @@ function ServiceDetails() {
             </div>
           )}
 
-          {/* Wybór daty — zmiana trigguje fetch slotów; tutaj resetujemy też stan slotów
-              żeby uniknąć synchronicznych setState wewnątrz useEffect */}
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => {
-              setDate(e.target.value);
-              setSlots([]);
-              setSlotsLoaded(false);
-              setSelectedSlot(null);
-              setBookingError("");
-              setBookingSuccess(false);
-            }}
-          />
+          {/* Wybór daty z nawigacją poprzedni/następny dzień */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", justifyContent: "center" }}>
+            <button
+              onClick={() => {
+                const d = new Date(date || new Date());
+                d.setDate(d.getDate() - 1);
+                const val = d.toISOString().split("T")[0];
+                setDate(val);
+                setSlots([]);
+                setSlotsLoaded(false);
+                setSelectedSlot(null);
+                setBookingError("");
+                setBookingSuccess(false);
+              }}
+            >
+              ◀
+            </button>
+
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setSlots([]);
+                setSlotsLoaded(false);
+                setSelectedSlot(null);
+                setBookingError("");
+                setBookingSuccess(false);
+              }}
+            />
+
+            <button
+              onClick={() => {
+                const d = new Date(date || new Date());
+                d.setDate(d.getDate() + 1);
+                const val = d.toISOString().split("T")[0];
+                setDate(val);
+                setSlots([]);
+                setSlotsLoaded(false);
+                setSelectedSlot(null);
+                setBookingError("");
+                setBookingSuccess(false);
+              }}
+            >
+              ▶
+            </button>
+          </div>
 
           {/* Brak dostępności w tym dniu — provider nie pracuje */}
           {slotsLoaded && slots.length === 0 && (
