@@ -1,21 +1,21 @@
+"use client";
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ErrorMessage } from "./ErrorMessage";
+import { useRouter } from "next/navigation";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-// Adres backendu pobierany ze zmiennej środowiskowej Vite
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-function Register() {
+export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const register = async () => {
     setError("");
 
-    // Walidacja po stronie klienta przed wysłaniem żądania
     if (!email || !password || !confirmPassword) {
       setError("Wypełnij wszystkie pola.");
       return;
@@ -37,14 +37,12 @@ function Register() {
 
     const data = await res.json();
 
-    // Obsługa błędu rejestracji zwróconego przez backend (np. email już zajęty)
     if (!res.ok) {
       setError(data.error || "Błąd rejestracji.");
       return;
     }
 
-    // Po udanej rejestracji przekierowujemy na stronę logowania
-    navigate("/login");
+    router.push("/login");
   };
 
   return (
@@ -58,5 +56,3 @@ function Register() {
     </div>
   );
 }
-
-export default Register;

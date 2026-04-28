@@ -42,11 +42,11 @@ services:
     build: ./client
     container_name: react_frontend
     ports:
-      - "5173:5173"
+      - "3000:3000"
     depends_on:
       - backend
     environment:
-      VITE_API_URL: http://localhost:3001
+      NEXT_PUBLIC_API_URL: http://localhost:3001
     volumes:
       - ./client:/app
       - /app/node_modules

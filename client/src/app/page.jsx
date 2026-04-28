@@ -1,18 +1,17 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 
-// Adres backendu pobierany ze zmiennej środowiskowej Vite
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Strona główna — lista wszystkich dostępnych usług z wyszukiwarką
-function App() {
+export default function HomePage() {
   const [services, setServices] = useState([]);
   const [query, setQuery] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [maxDuration, setMaxDuration] = useState("");
-  const navigate = useNavigate();
+  const router = useRouter();
 
-  // Przy pierwszym renderze pobieramy wszystkie usługi z API
   useEffect(() => {
     fetch(`${API_URL}/services`)
       .then((res) => res.json())
@@ -20,7 +19,6 @@ function App() {
       .catch((err) => console.error(err));
   }, []);
 
-  // Filtrujemy lokalnie — bez dodatkowego requestu do backendu
   const filtered = services.filter((s) => {
     if (!s.name.toLowerCase().includes(query.toLowerCase())) return false;
     if (maxPrice !== "" && s.price > Number(maxPrice)) return false;
@@ -59,12 +57,11 @@ function App() {
         <p>Brak wyników dla „{query}"</p>
       )}
 
-      {/* Każda usługa jest klikalnym kafelkiem prowadzącym do jej szczegółów */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", justifyContent: "center" }}>
         {filtered.map((service) => (
           <div
             key={service.id}
-            onClick={() => navigate(`/service/${service.id}`)}
+            onClick={() => router.push(`/service/${service.id}`)}
             style={{
               cursor: "pointer",
               border: "1px solid #ccc",
@@ -106,5 +103,3 @@ function App() {
     </div>
   );
 }
-
-export default App;

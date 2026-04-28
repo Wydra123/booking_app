@@ -1,21 +1,20 @@
+"use client";
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ErrorMessage } from "./ErrorMessage";
+import { useRouter } from "next/navigation";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
-// Adres backendu pobierany ze zmiennej środowiskowej Vite
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-function Login() {
+export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Komunikat błędu wyświetlany pod formularzem
   const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const login = async () => {
     setError("");
 
-    // Walidacja po stronie klienta przed wysłaniem żądania
     if (!email || !password) {
       setError("Wypełnij email i hasło.");
       return;
@@ -29,16 +28,14 @@ function Login() {
 
     const data = await res.json();
 
-    // Obsługa błędu logowania zwróconego przez backend
     if (!res.ok || !data.token) {
       setError(data.error || "Nieprawidłowy email lub hasło.");
       return;
     }
 
-    // Zapisujemy token i informujemy resztę aplikacji o zmianie stanu auth
     localStorage.setItem("token", data.token);
     window.dispatchEvent(new Event("authChanged"));
-    navigate("/");
+    router.push("/");
   };
 
   return (
@@ -51,5 +48,3 @@ function Login() {
     </div>
   );
 }
-
-export default Login;

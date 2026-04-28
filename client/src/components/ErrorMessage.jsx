@@ -1,5 +1,3 @@
-// Komponent wyświetlający komunikat błędu (czerwone tło)
-// Jeśli message jest pusty lub null — nic nie renderuje
 function ErrorMessage({ message }) {
   if (!message) return null;
   return (
@@ -17,8 +15,6 @@ function ErrorMessage({ message }) {
   );
 }
 
-// Komponent wyświetlający komunikat informacyjny (niebieskie tło)
-// Używany np. do potwierdzenia rezerwacji lub wskazówek dla użytkownika
 function InfoMessage({ message }) {
   if (!message) return null;
   return (

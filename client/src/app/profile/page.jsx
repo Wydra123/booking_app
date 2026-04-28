@@ -1,22 +1,23 @@
+"use client";
+
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Strona profilu użytkownika — podgląd i edycja danych osobowych
-function Profile() {
+export default function ProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const router = useRouter();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      navigate("/login");
+      router.push("/login");
       return;
     }
 
@@ -30,7 +31,7 @@ function Profile() {
         setPhone(data.phone || "");
       })
       .catch((err) => console.error(err));
-  }, [navigate]);
+  }, [router]);
 
   const save = async () => {
     setError("");
@@ -43,11 +44,7 @@ function Profile() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-      }),
+      body: JSON.stringify({ first_name: firstName, last_name: lastName, phone }),
     });
 
     if (!res.ok) {
@@ -112,7 +109,7 @@ function Profile() {
             });
             localStorage.removeItem("token");
             window.dispatchEvent(new Event("authChanged"));
-            navigate("/");
+            router.push("/");
           }}
           style={{ padding: "8px", background: "#e53935", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}
         >
@@ -122,5 +119,3 @@ function Profile() {
     </div>
   );
 }
-
-export default Profile;

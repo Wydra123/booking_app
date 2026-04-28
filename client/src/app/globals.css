@@ -44,17 +44,13 @@
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
 }
 
 body {
   margin: 0;
 }
 
-#root {
+.app-wrapper {
   width: 1126px;
   max-width: 100%;
   margin: 0 auto;
@@ -95,17 +91,68 @@ p {
   margin: 0;
 }
 
-code,
-.counter {
+code {
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
   color: var(--text-h);
-}
-
-code {
   font-size: 15px;
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
+}
+
+/* ServiceDetails styles */
+.service-container {
+  padding: 20px;
+}
+
+.slots-container {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.slot-btn {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+  transition: 0.2s;
+  color: #4caf50;
+}
+
+.slot-btn:hover {
+  background: #f0f0f0;
+  color: #4caf50;
+}
+
+.slot-selected {
+  background: #4caf50;
+  color: white;
+  border-color: #4caf50;
+}
+
+.slot-disabled {
+  background: #ddd;
+  color: #888;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.book-btn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  border: none;
+  background: #4caf50;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.book-btn:disabled {
+  background: #aaa;
+  cursor: not-allowed;
 }

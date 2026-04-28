@@ -1,37 +1,31 @@
-import { useParams } from "react-router-dom";
+"use client";
+
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getUserFromToken } from "../utils/auth";
-import { ErrorMessage, InfoMessage } from "./ErrorMessage";
-import "./ServiceDetails.css";
+import { getUserFromToken } from "@/utils/auth";
+import { ErrorMessage, InfoMessage } from "@/components/ErrorMessage";
 
-// Adres backendu pobierany ze zmiennej środowiskowej Vite
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Strona szczegółów usługi z wyborem terminu i rezerwacją
-function ServiceDetails() {
-  // id usługi z URL (np. /service/3)
+export default function ServiceDetailsPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const [service, setService] = useState(null);
-  // Wybrana data w formacie YYYY-MM-DD
   const [date, setDate] = useState("");
-  // Lista slotów godzinowych zwrócona przez API dla wybranej daty
   const [slots, setSlots] = useState([]);
-  // Wybrany slot (pełny timestamp)
   const [selectedSlot, setSelectedSlot] = useState(null);
-  // Flaga informująca, że API odpowiedziało na zapytanie o sloty
   const [slotsLoaded, setSlotsLoaded] = useState(false);
   const [bookingError, setBookingError] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [availability, setAvailability] = useState([]);
+  const [user, setUser] = useState(null);
 
-  // Dane zalogowanego użytkownika (lub null jeśli niezalogowany)
-  const user = getUserFromToken();
+  useEffect(() => {
+    setUser(getUserFromToken());
+  }, []);
 
-  // Pobieramy dane usługi i dostępność przy pierwszym renderze lub zmianie id
   useEffect(() => {
     fetch(`${API_URL}/services/${id}`)
       .then((res) => res.json())
@@ -42,7 +36,6 @@ function ServiceDetails() {
       .then(setAvailability);
   }, [id]);
 
-  // Pobieramy rezerwacje usługi — tylko gdy zalogowany użytkownik jest jej właścicielem
   useEffect(() => {
     if (!service || !user || user.userId !== service.user_id) return;
     const token = localStorage.getItem("token");
@@ -54,9 +47,6 @@ function ServiceDetails() {
       .catch((err) => console.error(err));
   }, [service, id, user?.userId]);
 
-  // Gdy użytkownik zmieni datę — pobieramy dostępne sloty dla tej daty
-  // Reset stanu (slots, slotsLoaded, selectedSlot) odbywa się w onChange daty,
-  // dzięki czemu useEffect wywołuje setState tylko asynchronicznie w .then()
   useEffect(() => {
     if (!date) return;
     fetch(`${API_URL}/available-slots/${id}?date=${date}`)
@@ -67,16 +57,13 @@ function ServiceDetails() {
       });
   }, [date, id]);
 
-  // Czekamy na załadowanie danych usługi
   if (!service) return <div>Ładowanie...</div>;
 
-  // Właściciel usługi nie może jej sam zarezerwować — ukrywamy formularz rezerwacji
   const isOwner = user?.userId === service.user_id;
 
-  // Rezerwuje wybrany slot — wymaga zalogowania i wybranego slotu
   const book = async () => {
     if (!user) {
-      navigate("/login");
+      router.push("/login");
       return;
     }
 
@@ -87,14 +74,8 @@ function ServiceDetails() {
 
     const res = await fetch(`${API_URL}/appointments`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        service_id: service.id,
-        appointment_time: selectedSlot,
-      }),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ service_id: service.id, appointment_time: selectedSlot }),
     });
 
     const data = await res.json();
@@ -106,14 +87,12 @@ function ServiceDetails() {
 
     setBookingSuccess(true);
 
-    // Po rezerwacji odświeżamy sloty — zarezerwowany termin zmieni status na zajęty
     const refresh = await fetch(`${API_URL}/available-slots/${id}?date=${date}`);
     const refreshed = await refresh.json();
     setSlots(refreshed);
     setSelectedSlot(null);
   };
 
-  // Liczba dostępnych (wolnych) slotów w wybranym dniu
   const availableCount = slots.filter((s) => s.available).length;
 
   return (
@@ -123,13 +102,7 @@ function ServiceDetails() {
           <img
             src={`${API_URL}${service.image_url}`}
             alt={service.name}
-            style={{
-              width: "100%",
-              maxWidth: "400px",
-              height: "260px",
-              objectFit: "cover",
-              borderRadius: "10px",
-            }}
+            style={{ width: "100%", maxWidth: "400px", height: "260px", objectFit: "cover", borderRadius: "10px" }}
           />
         </div>
       )}
@@ -146,7 +119,6 @@ function ServiceDetails() {
         <p style={{ marginTop: "12px", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{service.description}</p>
       )}
 
-      {/* Lista rezerwacji — widoczna tylko dla właściciela usługi */}
       {isOwner && (
         <div style={{ marginTop: "24px" }}>
           <h2>Rezerwacje</h2>
@@ -154,23 +126,15 @@ function ServiceDetails() {
             <p>Brak rezerwacji.</p>
           ) : (
             bookings.map((b) => {
-              const date = b.appointment_time.split("T")[0];
+              const bDate = b.appointment_time.split("T")[0];
               const timeStart = b.appointment_time.split("T")[1];
               const timeEnd = b.end_time.split("T")[1];
-              const name = [b.first_name, b.last_name].filter(Boolean).join(" ");
+              const bName = [b.first_name, b.last_name].filter(Boolean).join(" ");
               return (
-                <div
-                  key={b.id}
-                  style={{
-                    border: "1px solid #ccc",
-                    borderRadius: "8px",
-                    padding: "10px",
-                    marginBottom: "8px",
-                  }}
-                >
-                  <p>📅 {date} &nbsp; 🕐 {timeStart} – {timeEnd}</p>
-                  <p>👤 {name || b.email}</p>
-                  {name && <p style={{ color: "#666", fontSize: "14px" }}>{b.email}</p>}
+                <div key={b.id} style={{ border: "1px solid #ccc", borderRadius: "8px", padding: "10px", marginBottom: "8px" }}>
+                  <p>📅 {bDate} &nbsp; 🕐 {timeStart} – {timeEnd}</p>
+                  <p>👤 {bName || b.email}</p>
+                  {bName && <p style={{ color: "#666", fontSize: "14px" }}>{b.email}</p>}
                   {b.phone && <p>📞 {b.phone}</p>}
                 </div>
               );
@@ -179,15 +143,10 @@ function ServiceDetails() {
         </div>
       )}
 
-      {/* Formularz rezerwacji — ukryty dla właściciela usługi */}
       {!isOwner && (
         <>
-          {/* Informacja dla niezalogowanych */}
-          {!user && (
-            <InfoMessage message="Zaloguj się, żeby zarezerwować termin." />
-          )}
+          {!user && <InfoMessage message="Zaloguj się, żeby zarezerwować termin." />}
 
-          {/* Dostępne dni tygodnia usługodawcy */}
           {availability.length > 0 && (
             <div style={{ marginBottom: "12px" }}>
               <p style={{ marginBottom: "6px" }}>Dostępne dni:</p>
@@ -207,11 +166,7 @@ function ServiceDetails() {
                       }}
                     >
                       <div style={{ fontWeight: "bold" }}>{label}</div>
-                      {day && (
-                        <div style={{ fontSize: "12px" }}>
-                          {day.start_time.slice(0, 5)}–{day.end_time.slice(0, 5)}
-                        </div>
-                      )}
+                      {day && <div style={{ fontSize: "12px" }}>{day.start_time.slice(0, 5)}–{day.end_time.slice(0, 5)}</div>}
                     </div>
                   );
                 })}
@@ -219,34 +174,23 @@ function ServiceDetails() {
             </div>
           )}
 
-          {/* Wybór daty z nawigacją poprzedni/następny dzień */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", justifyContent: "center" }}>
             <button
               onClick={() => {
                 const d = new Date(date || new Date());
                 d.setDate(d.getDate() - 1);
                 const val = d.toISOString().split("T")[0];
-                setDate(val);
-                setSlots([]);
-                setSlotsLoaded(false);
-                setSelectedSlot(null);
-                setBookingError("");
-                setBookingSuccess(false);
+                setDate(val); setSlots([]); setSlotsLoaded(false); setSelectedSlot(null);
+                setBookingError(""); setBookingSuccess(false);
               }}
-            >
-              ◀
-            </button>
+            >◀</button>
 
             <input
               type="date"
               value={date}
               onChange={(e) => {
-                setDate(e.target.value);
-                setSlots([]);
-                setSlotsLoaded(false);
-                setSelectedSlot(null);
-                setBookingError("");
-                setBookingSuccess(false);
+                setDate(e.target.value); setSlots([]); setSlotsLoaded(false);
+                setSelectedSlot(null); setBookingError(""); setBookingSuccess(false);
               }}
             />
 
@@ -255,48 +199,31 @@ function ServiceDetails() {
                 const d = new Date(date || new Date());
                 d.setDate(d.getDate() + 1);
                 const val = d.toISOString().split("T")[0];
-                setDate(val);
-                setSlots([]);
-                setSlotsLoaded(false);
-                setSelectedSlot(null);
-                setBookingError("");
-                setBookingSuccess(false);
+                setDate(val); setSlots([]); setSlotsLoaded(false); setSelectedSlot(null);
+                setBookingError(""); setBookingSuccess(false);
               }}
-            >
-              ▶
-            </button>
+            >▶</button>
           </div>
 
-          {/* Brak dostępności w tym dniu — provider nie pracuje */}
           {slotsLoaded && slots.length === 0 && (
             <InfoMessage message="Usługodawca nie przyjmuje w tym dniu. Wybierz inną datę." />
           )}
 
-          {/* Są sloty, ale wszystkie zajęte */}
           {slotsLoaded && slots.length > 0 && availableCount === 0 && (
             <InfoMessage message="Wszystkie terminy w tym dniu są już zajęte. Wybierz inną datę." />
           )}
 
-          {/* Siatka przycisków z dostępnymi godzinami */}
           <div className="slots-container">
             {slots.map((slot) => {
-              // Wycinamy tylko część godzinową z timestampa
               const time = slot.time.split("T")[1];
               const isAvailable = !!slot.available;
               const isSelected = selectedSlot === slot.time;
-
               return (
                 <button
                   key={slot.time}
                   disabled={!isAvailable}
-                  onClick={() => {
-                    if (!isAvailable) return;
-                    setSelectedSlot(slot.time);
-                  }}
-                  className={`slot-btn
-                    ${!isAvailable ? "slot-disabled" : ""}
-                    ${isSelected ? "slot-selected" : ""}
-                  `}
+                  onClick={() => { if (!isAvailable) return; setSelectedSlot(slot.time); }}
+                  className={`slot-btn ${!isAvailable ? "slot-disabled" : ""} ${isSelected ? "slot-selected" : ""}`}
                 >
                   {time}
                 </button>
@@ -305,18 +232,10 @@ function ServiceDetails() {
           </div>
 
           {bookingError && <ErrorMessage message={bookingError} />}
+          {bookingSuccess && <InfoMessage message="Rezerwacja została potwierdzona!" />}
 
-          {bookingSuccess && (
-            <InfoMessage message="Rezerwacja została potwierdzona!" />
-          )}
-
-          {/* Przycisk "Zarezerwuj" aktywny tylko gdy wybrano slot */}
           {user && (
-            <button
-              className="book-btn"
-              onClick={book}
-              disabled={!selectedSlot}
-            >
+            <button className="book-btn" onClick={book} disabled={!selectedSlot}>
               Zarezerwuj
             </button>
           )}
@@ -325,5 +244,3 @@ function ServiceDetails() {
     </div>
   );
 }
-
-export default ServiceDetails;
