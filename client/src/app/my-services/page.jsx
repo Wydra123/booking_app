@@ -358,30 +358,31 @@ export default function MyServicesPage() {
           {editingId === service.id && (
             <div
               style={{
-                border: "1px solid #ccc",
+                border: "1px solid #333",
                 borderTop: "none",
                 padding: "12px",
                 marginBottom: "10px",
                 borderRadius: "0 0 8px 8px",
-                background: "#e8e8e8",
+                background: "#000",
+                color: "#fff",
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ marginTop: 0 }}>Edytuj usługę</h3>
-              <input placeholder="Nazwa" value={editName} onChange={(e) => setEditName(e.target.value)} />
-              <input placeholder="Czas (min)" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} />
-              <input placeholder="Cena" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
+              <h3 style={{ marginTop: 0, color: "#fff" }}>Edytuj usługę</h3>
+              <input placeholder="Nazwa" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px", padding: "6px 8px", marginRight: "8px" }} />
+              <input placeholder="Czas (min)" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} style={{ background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px", padding: "6px 8px", marginRight: "8px" }} />
+              <input placeholder="Cena" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} style={{ background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px", padding: "6px 8px" }} />
               <div style={{ display: "flex", justifyContent: "center", marginTop: "8px" }}>
                 <textarea
                   placeholder="Opis usługi (opcjonalnie)"
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   rows={3}
-                  style={{ width: "100%", maxWidth: "400px", padding: "6px", resize: "vertical" }}
+                  style={{ width: "100%", maxWidth: "400px", padding: "6px", resize: "vertical", background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px" }}
                 />
               </div>
               <div style={{ margin: "10px 0" }}>
-                <label style={{ display: "block", marginBottom: "4px" }}>Zdjęcie usługi</label>
+                <label style={{ display: "block", marginBottom: "4px", color: "#fff" }}>Zdjęcie usługi</label>
                 {editImageUrl && !editImageFile && (
                   <img
                     src={imgSrc(editImageUrl)}
@@ -390,8 +391,8 @@ export default function MyServicesPage() {
                   />
                 )}
                 <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                  <input type="file" accept="image/*" onChange={(e) => { setEditImageFile(e.target.files[0] || null); }} />
-                  <button type="button" onClick={() => openUnsplash(service.id)} style={{ padding: "4px 10px", borderRadius: "4px", cursor: "pointer" }}>
+                  <input type="file" accept="image/*" onChange={(e) => { setEditImageFile(e.target.files[0] || null); }} style={{ color: "#fff" }} />
+                  <button type="button" onClick={() => openUnsplash(service.id)} style={{ padding: "4px 10px", borderRadius: "4px", cursor: "pointer", background: "#333", color: "#fff", border: "1px solid #555" }}>
                     Szukaj na Unsplash
                   </button>
                 </div>
@@ -403,19 +404,19 @@ export default function MyServicesPage() {
                   />
                 )}
                 {unsplashOpen && unsplashTarget === service.id && (
-                  <div style={{ marginTop: "10px", border: "1px solid #ccc", borderRadius: "8px", padding: "10px" }}>
+                  <div style={{ marginTop: "10px", border: "1px solid #555", borderRadius: "8px", padding: "10px", background: "#111" }}>
                     <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
                       <input
                         value={unsplashQuery}
                         onChange={(e) => setUnsplashQuery(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && searchUnsplash()}
                         placeholder="np. fryzjer, masaż, siłownia..."
-                        style={{ flex: 1, padding: "4px 8px", borderRadius: "4px", border: "1px solid #ccc" }}
+                        style={{ flex: 1, padding: "4px 8px", borderRadius: "4px", border: "1px solid #555", background: "#222", color: "#fff" }}
                       />
-                      <button type="button" onClick={searchUnsplash} disabled={unsplashLoading} style={{ padding: "4px 12px", borderRadius: "4px", cursor: "pointer" }}>
+                      <button type="button" onClick={searchUnsplash} disabled={unsplashLoading} style={{ padding: "4px 12px", borderRadius: "4px", cursor: "pointer", background: "#333", color: "#fff", border: "1px solid #555" }}>
                         {unsplashLoading ? "Szukam..." : "Szukaj"}
                       </button>
-                      <button type="button" onClick={() => setUnsplashOpen(false)} style={{ padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>✕</button>
+                      <button type="button" onClick={() => setUnsplashOpen(false)} style={{ padding: "4px 8px", borderRadius: "4px", cursor: "pointer", background: "#333", color: "#fff", border: "1px solid #555" }}>✕</button>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
                       {unsplashPhotos.map((p) => (
@@ -424,7 +425,7 @@ export default function MyServicesPage() {
                           src={p.thumb}
                           alt={p.alt}
                           onClick={() => selectUnsplashPhoto(p)}
-                          style={{ width: "100%", height: "150px", objectFit: "contain", background: "#f0f0f0", borderRadius: "4px", cursor: "pointer" }}
+                          style={{ width: "100%", height: "150px", objectFit: "contain", background: "#333", borderRadius: "4px", cursor: "pointer" }}
                           title={`Zdjęcie: ${p.author}`}
                         />
                       ))}
@@ -432,11 +433,11 @@ export default function MyServicesPage() {
                   </div>
                 )}
               </div>
-              <h4>Dostępność</h4>
+              <h4 style={{ color: "#fff" }}>Dostępność</h4>
               {renderAvailabilityGrid(editAvailability, setEditAvailability)}
               <div style={{ marginTop: "10px" }}>
-                <button onClick={(e) => saveEdit(service.id, e)} style={{ marginRight: "8px" }}>Zapisz</button>
-                <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }}>Anuluj</button>
+                <button onClick={(e) => saveEdit(service.id, e)} style={{ marginRight: "8px", padding: "6px 16px", background: "#fff", color: "#000", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }}>Zapisz</button>
+                <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} style={{ padding: "6px 16px", background: "#333", color: "#fff", border: "1px solid #555", borderRadius: "4px", cursor: "pointer" }}>Anuluj</button>
               </div>
             </div>
           )}

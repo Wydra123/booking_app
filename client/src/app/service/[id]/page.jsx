@@ -113,10 +113,11 @@ export default function ServiceDetailsPage() {
         </div>
       )}
       <h1>{service.name}</h1>
-      <p>⏱ {service.duration} min</p>
+      
+      <p style={{ lineHeight: 1.5 }}>⏱ {service.duration} min</p>
       <p>
         💰 {service.price} zł
-        {eurRate && <span style={{ color: "#888", fontSize: "14px" }}> ≈ {(service.price / eurRate).toFixed(2)} EUR</span>}
+        {eurRate && <span style={{ color: "#888", fontSize: "14px"}}> ≈ {(service.price / eurRate).toFixed(2)} EUR</span>}
       </p>
       {(service.first_name || service.last_name) ? (
         <p>👤 {[service.first_name, service.last_name].filter(Boolean).join(" ")}</p>
