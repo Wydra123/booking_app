@@ -21,6 +21,7 @@ export default function ServiceDetailsPage() {
   const [bookings, setBookings] = useState([]);
   const [availability, setAvailability] = useState([]);
   const [user, setUser] = useState(null);
+  const [eurRate, setEurRate] = useState(null);
 
   useEffect(() => {
     setUser(getUserFromToken());
@@ -34,6 +35,11 @@ export default function ServiceDetailsPage() {
     fetch(`${API_URL}/services/${id}/availability`)
       .then((res) => res.json())
       .then(setAvailability);
+
+    fetch(`${API_URL}/api/nbp/eur`)
+      .then((res) => res.json())
+      .then((data) => setEurRate(data.rate))
+      .catch(() => {});
   }, [id]);
 
   useEffect(() => {
@@ -108,7 +114,10 @@ export default function ServiceDetailsPage() {
       )}
       <h1>{service.name}</h1>
       <p>⏱ {service.duration} min</p>
-      <p>💰 {service.price} zł</p>
+      <p>
+        💰 {service.price} zł
+        {eurRate && <span style={{ color: "#888", fontSize: "14px" }}> ≈ {(service.price / eurRate).toFixed(2)} EUR</span>}
+      </p>
       {(service.first_name || service.last_name) ? (
         <p>👤 {[service.first_name, service.last_name].filter(Boolean).join(" ")}</p>
       ) : (

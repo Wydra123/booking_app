@@ -10,6 +10,7 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [maxDuration, setMaxDuration] = useState("");
+  const [eurRate, setEurRate] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -17,6 +18,11 @@ export default function HomePage() {
       .then((res) => res.json())
       .then((data) => setServices(data))
       .catch((err) => console.error(err));
+
+    fetch(`${API_URL}/api/nbp/eur`)
+      .then((res) => res.json())
+      .then((data) => setEurRate(data.rate))
+      .catch(() => {});
   }, []);
 
   const filtered = services.filter((s) => {
@@ -75,7 +81,7 @@ export default function HomePage() {
               style={{
                 width: "220px",
                 height: "160px",
-                background: "#f0f0f0",
+                background: "#000",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -84,9 +90,11 @@ export default function HomePage() {
             >
               {service.image_url ? (
                 <img
-                  src={`${API_URL}${service.image_url}`}
+                  src={service.image_url.startsWith("http") ? service.image_url : `${API_URL}${service.image_url}`}
                   alt={service.name}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  background= {"#000"}
+
                 />
               ) : (
                 <span style={{ fontSize: "48px", color: "#ccc" }}>🖼️</span>
@@ -95,7 +103,10 @@ export default function HomePage() {
             <div style={{ padding: "10px" }}>
               <h3 style={{ margin: "0 0 6px" }}>{service.name}</h3>
               <p style={{ margin: "2px 0" }}>⏱ {service.duration} min</p>
-              <p style={{ margin: "2px 0" }}>💰 {service.price} zł</p>
+              <p style={{ margin: "2px 0" }}>
+                💰 {service.price} zł
+                {eurRate && <span style={{ color: "#888", fontSize: "13px" }}> ≈ {(service.price / eurRate).toFixed(2)} EUR</span>}
+              </p>
             </div>
           </div>
         ))}
