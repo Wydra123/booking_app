@@ -266,6 +266,12 @@ export default function MyServicesPage() {
     <div style={{ padding: "20px" }}>
       <h1>Moje usługi</h1>
 
+      <div style={{ marginBottom: "16px" }}>
+        <button onClick={() => router.push("/import-places")} style={{ padding: "8px 16px", borderRadius: "6px", cursor: "pointer" }}>
+          Importuj z Google Places
+        </button>
+      </div>
+
       <div style={{ marginBottom: "20px" }}>
         <h2>Dodaj usługę</h2>
         <input placeholder="Nazwa" value={name} onChange={(e) => setName(e.target.value)} />
