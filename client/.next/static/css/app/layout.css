@@ -159,4 +159,13 @@ code {
   background: #aaa;
   cursor: not-allowed;
 }
+.service-container h1 {
+  font-size: 28px;
+  letter-spacing: -0.5px;
+  margin: 16px 0;
 
+  @media (max-width: 1024px) {
+    font-size: 22px;
+    margin: 12px 0;
+  }
+}
