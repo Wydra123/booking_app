@@ -317,7 +317,7 @@ export default function MyServicesPage() {
                     src={p.thumb}
                     alt={p.alt}
                     onClick={() => selectUnsplashPhoto(p)}
-                    style={{ width: "100%", height: "70px", objectFit: "cover", borderRadius: "4px", cursor: "pointer" }}
+                    style={{ width: "100%", height: "150px", objectFit: "contain", background: "#f0f0f0", borderRadius: "4px", cursor: "pointer" }}
                     title={`Zdjęcie: ${p.author}`}
                   />
                 ))}
@@ -418,7 +418,7 @@ export default function MyServicesPage() {
                           src={p.thumb}
                           alt={p.alt}
                           onClick={() => selectUnsplashPhoto(p)}
-                          style={{ width: "100%", height: "70px", objectFit: "cover", borderRadius: "4px", cursor: "pointer" }}
+                          style={{ width: "100%", height: "150px", objectFit: "contain", background: "#f0f0f0", borderRadius: "4px", cursor: "pointer" }}
                           title={`Zdjęcie: ${p.author}`}
                         />
                       ))}
