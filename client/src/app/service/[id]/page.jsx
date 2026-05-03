@@ -100,7 +100,7 @@ export default function ServiceDetailsPage() {
       {service.image_url && (
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
           <img
-            src={`${API_URL}${service.image_url}`}
+            src={service.image_url.startsWith("http") ? service.image_url : `${API_URL}${service.image_url}`}
             alt={service.name}
             style={{ width: "100%", maxWidth: "400px", height: "260px", objectFit: "cover", borderRadius: "10px" }}
           />
