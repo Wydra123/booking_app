@@ -286,9 +286,9 @@ export default function MyServicesPage() {
             style={{ width: "100%", maxWidth: "400px", padding: "6px", resize: "vertical" }}
           />
         </div>
-        <div style={{ margin: "10px 0" }}>
+        <div style={{ margin: "10px 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <label style={{ display: "block", marginBottom: "4px" }}>Zdjęcie usługi</label>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
             <input type="file" accept="image/*" onChange={(e) => { setImageFile(e.target.files[0] || null); setImageUrl(null); }} />
             <button type="button" onClick={() => openUnsplash("add")} style={{ padding: "4px 10px", borderRadius: "4px", cursor: "pointer" }}>
               Szukaj na Unsplash
@@ -302,7 +302,7 @@ export default function MyServicesPage() {
             />
           )}
           {unsplashOpen && unsplashTarget === "add" && (
-            <div style={{ marginTop: "10px", border: "1px solid #ccc", borderRadius: "8px", padding: "10px" }}>
+            <div style={{ marginTop: "10px", border: "1px solid #ccc", borderRadius: "8px", padding: "10px", width: "100%", maxWidth: "500px" }}>
               <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
                 <input
                   value={unsplashQuery}
