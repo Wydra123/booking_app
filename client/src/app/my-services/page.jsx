@@ -17,13 +17,6 @@ const daysTemplate = [
 
 export default function MyServicesPage() {
   const [services, setServices] = useState([]);
-  const [name, setName] = useState("");
-  const [duration, setDuration] = useState("");
-  const [price, setPrice] = useState("");
-  const [availability, setAvailability] = useState(daysTemplate);
-  const [imageFile, setImageFile] = useState(null);
-  const [imageUrl, setImageUrl] = useState(null);
-  const [description, setDescription] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editDuration, setEditDuration] = useState("");
@@ -37,7 +30,6 @@ export default function MyServicesPage() {
   const [unsplashPhotos, setUnsplashPhotos] = useState([]);
   const [unsplashLoading, setUnsplashLoading] = useState(false);
   const [unsplashOpen, setUnsplashOpen] = useState(false);
-  const [unsplashTarget, setUnsplashTarget] = useState(null); // "add" | editingId
 
   const router = useRouter();
 
@@ -96,61 +88,14 @@ export default function MyServicesPage() {
   };
 
   const selectUnsplashPhoto = (photo) => {
-    if (unsplashTarget === "add") {
-      setImageUrl(photo.full);
-      setImageFile(null);
-    } else {
-      setEditImageUrl(photo.full);
-      setEditImageFile(null);
-    }
+    setEditImageUrl(photo.full);
+    setEditImageFile(null);
     setUnsplashOpen(false);
     setUnsplashPhotos([]);
     setUnsplashQuery("");
   };
 
-  const openUnsplash = (target) => {
-    setUnsplashTarget(target);
-    setUnsplashOpen(true);
-    setUnsplashPhotos([]);
-    setUnsplashQuery(target === "add" ? name : editName);
-  };
-
   const imgSrc = (url) => url?.startsWith("http") ? url : `${API_URL}${url}`;
-
-  const addService = async () => {
-    const token = localStorage.getItem("token");
-    if (!name || !duration || !price) {
-      alert("Uzupełnij wszystkie pola");
-      return;
-    }
-    let image_url = imageUrl;
-    if (imageFile) image_url = await uploadImage(imageFile, token);
-    const res = await fetch(`${API_URL}/services`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        name,
-        duration,
-        price,
-        image_url,
-        description: description || null,
-        availability: availability.filter((d) => d.enabled && d.start && d.end),
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.error || "Błąd dodawania");
-      return;
-    }
-    await refreshServices();
-    setName("");
-    setDuration("");
-    setPrice("");
-    setAvailability(daysTemplate);
-    setImageFile(null);
-    setImageUrl(null);
-    setDescription("");
-  };
 
   const startEdit = async (service, e) => {
     e.stopPropagation();
@@ -174,6 +119,7 @@ export default function MyServicesPage() {
     setEditImageFile(null);
     setEditImageUrl(service.image_url || null);
     setEditDescription(service.description || "");
+    setUnsplashOpen(false);
   };
 
   const saveEdit = async (id, e) => {
@@ -264,76 +210,14 @@ export default function MyServicesPage() {
 
   return (
     <div style={{ padding: "20px" }}>
-      <h1>Moje usługi</h1>
-
-      <div style={{ marginBottom: "16px" }}>
-        <button onClick={() => router.push("/import-places")} style={{ padding: "8px 16px", borderRadius: "6px", cursor: "pointer" }}>
-          Importuj z Google Places
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+        <h1 style={{ margin: 0 }}>Moje usługi</h1>
+        <button
+          onClick={() => router.push("/my-services/add")}
+          style={{ padding: "8px 18px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
+        >
+          + Dodaj usługę
         </button>
-      </div>
-
-      <div style={{ marginBottom: "20px" }}>
-        <h2>Dodaj usługę</h2>
-        <input placeholder="Nazwa" value={name} onChange={(e) => setName(e.target.value)} />
-        <input placeholder="Czas (min)" value={duration} onChange={(e) => setDuration(e.target.value)} />
-        <input placeholder="Cena" value={price} onChange={(e) => setPrice(e.target.value)} />
-        <div style={{ display: "flex", justifyContent: "center", marginTop: "8px" }}>
-          <textarea
-            placeholder="Opis usługi (opcjonalnie)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            style={{ width: "100%", maxWidth: "400px", padding: "6px", resize: "vertical" }}
-          />
-        </div>
-        <div style={{ margin: "10px 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <label style={{ display: "block", marginBottom: "4px" }}>Zdjęcie usługi</label>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
-            <input type="file" accept="image/*" onChange={(e) => { setImageFile(e.target.files[0] || null); setImageUrl(null); }} />
-            <button type="button" onClick={() => openUnsplash("add")} style={{ padding: "4px 10px", borderRadius: "4px", cursor: "pointer" }}>
-              Szukaj na Unsplash
-            </button>
-          </div>
-          {(imageFile || imageUrl) && (
-            <img
-              src={imageFile ? URL.createObjectURL(imageFile) : imageUrl}
-              alt="podgląd"
-              style={{ marginTop: "8px", width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px" }}
-            />
-          )}
-          {unsplashOpen && unsplashTarget === "add" && (
-            <div style={{ marginTop: "10px", border: "1px solid #ccc", borderRadius: "8px", padding: "10px", width: "100%", maxWidth: "500px" }}>
-              <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
-                <input
-                  value={unsplashQuery}
-                  onChange={(e) => setUnsplashQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && searchUnsplash()}
-                  placeholder="np. fryzjer, masaż, siłownia..."
-                  style={{ flex: 1, padding: "4px 8px", borderRadius: "4px", border: "1px solid #ccc" }}
-                />
-                <button type="button" onClick={searchUnsplash} disabled={unsplashLoading} style={{ padding: "4px 12px", borderRadius: "4px", cursor: "pointer" }}>
-                  {unsplashLoading ? "Szukam..." : "Szukaj"}
-                </button>
-                <button type="button" onClick={() => setUnsplashOpen(false)} style={{ padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>✕</button>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
-                {unsplashPhotos.map((p) => (
-                  <img
-                    key={p.id}
-                    src={p.thumb}
-                    alt={p.alt}
-                    onClick={() => selectUnsplashPhoto(p)}
-                    style={{ width: "100%", height: "150px", objectFit: "contain", background: "#f0f0f0", borderRadius: "4px", cursor: "pointer" }}
-                    title={`Zdjęcie: ${p.author}`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        <h3>Dostępność</h3>
-        {renderAvailabilityGrid(availability, setAvailability)}
-        <button onClick={addService}>Dodaj</button>
       </div>
 
       {services.map((service) => (
@@ -392,7 +276,7 @@ export default function MyServicesPage() {
                 )}
                 <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                   <input type="file" accept="image/*" onChange={(e) => { setEditImageFile(e.target.files[0] || null); }} style={{ color: "#fff" }} />
-                  <button type="button" onClick={() => openUnsplash(service.id)} style={{ padding: "4px 10px", borderRadius: "4px", cursor: "pointer", background: "#333", color: "#fff", border: "1px solid #555" }}>
+                  <button type="button" onClick={() => { setUnsplashOpen(true); setUnsplashQuery(editName); }} style={{ padding: "4px 10px", borderRadius: "4px", cursor: "pointer", background: "#333", color: "#fff", border: "1px solid #555" }}>
                     Szukaj na Unsplash
                   </button>
                 </div>
@@ -403,7 +287,7 @@ export default function MyServicesPage() {
                     style={{ marginTop: "8px", width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px" }}
                   />
                 )}
-                {unsplashOpen && unsplashTarget === service.id && (
+                {unsplashOpen && (
                   <div style={{ marginTop: "10px", border: "1px solid #555", borderRadius: "8px", padding: "10px", background: "#111" }}>
                     <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
                       <input
