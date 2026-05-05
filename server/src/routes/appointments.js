@@ -60,6 +60,26 @@ router.delete("/appointments/:id", authMiddleware, async (req, res) => {
   res.send("Deleted");
 });
 
+router.delete("/provider/appointments/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.userId;
+
+  const result = await pool.query(
+    `DELETE FROM appointments
+     USING services
+     WHERE appointments.id = $1
+       AND appointments.service_id = services.id
+       AND services.user_id = $2`,
+    [id, userId]
+  );
+
+  if (result.rowCount === 0) {
+    return res.status(403).json({ error: "Brak dostępu lub rezerwacja nie istnieje" });
+  }
+
+  res.send("Deleted");
+});
+
 router.get("/appointments/:serviceId", async (req, res) => {
   const result = await pool.query(
     "SELECT appointment_time, end_time FROM appointments WHERE service_id = $1",

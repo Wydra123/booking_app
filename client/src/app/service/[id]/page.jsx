@@ -99,6 +99,18 @@ export default function ServiceDetailsPage() {
     setSelectedSlot(null);
   };
 
+  const cancelBooking = async (bookingId) => {
+    if (!confirm("Czy na pewno chcesz anulować tę rezerwację?")) return;
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/provider/appointments/${bookingId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setBookings((prev) => prev.filter((b) => b.id !== bookingId));
+    }
+  };
+
   const availableCount = slots.filter((s) => s.available).length;
 
   return (
@@ -146,6 +158,12 @@ export default function ServiceDetailsPage() {
                   <p>👤 {bName || b.email}</p>
                   {bName && <p style={{ color: "#666", fontSize: "14px" }}>{b.email}</p>}
                   {b.phone && <p>📞 {b.phone}</p>}
+                  <button
+                    onClick={() => cancelBooking(b.id)}
+                    style={{ marginTop: "8px", background: "#e53e3e", color: "#fff", border: "none", borderRadius: "6px", padding: "6px 14px", cursor: "pointer" }}
+                  >
+                    Anuluj rezerwację
+                  </button>
                 </div>
               );
             })
