@@ -4,7 +4,8 @@
       "Bash(iconv -f UTF-16LE -t UTF-8 /c/Users/Admin/Desktop/projekt_web/Project-N/schema.sql)",
       "Bash(npm install *)",
       "Bash(npx eslint *)",
-      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Desktop\\\\projekt_web\\\\Project-N\" -Recurse -Force)"
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Desktop\\\\projekt_web\\\\Project-N\" -Recurse -Force)",
+      "Bash(node -e \"require\\('ws'\\); console.log\\('ws ok'\\)\")"
     ]
   }
 }

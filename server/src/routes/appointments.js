@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const authMiddleware = require("../middleware/auth");
+const wsServer = require("../ws");
 
 const addMinutes = (time, mins) => {
   const [date, t] = time.split("T");
@@ -19,12 +20,12 @@ router.post("/appointments", authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 
   const service = await pool.query(
-    "SELECT duration FROM services WHERE id = $1",
+    "SELECT id, duration, name, user_id FROM services WHERE id = $1",
     [service_id]
   );
 
-  const duration = Number(service.rows[0].duration);
-  const end_time = addMinutes(appointment_time, duration);
+  const { duration, name: serviceName, user_id: providerId } = service.rows[0];
+  const end_time = addMinutes(appointment_time, Number(duration));
 
   const conflict = await pool.query(
     `SELECT * FROM appointments
@@ -44,6 +45,25 @@ router.post("/appointments", authMiddleware, async (req, res) => {
      RETURNING *`,
     [userId, service_id, appointment_time, end_time]
   );
+
+  const clientInfo = await pool.query(
+    `SELECT u.email, p.first_name, p.last_name, p.phone
+     FROM users u
+     LEFT JOIN user_profiles p ON p.user_id = u.id
+     WHERE u.id = $1`,
+    [userId]
+  );
+  const client = clientInfo.rows[0];
+  const clientName = [client.first_name, client.last_name].filter(Boolean).join(" ") || client.email;
+
+  wsServer.notifyProvider(providerId, {
+    type: "new_booking",
+    appointment: result.rows[0],
+    serviceName,
+    clientName,
+    clientEmail: client.email,
+    clientPhone: client.phone || null,
+  });
 
   res.json(result.rows[0]);
 });

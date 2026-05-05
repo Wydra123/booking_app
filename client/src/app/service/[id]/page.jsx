@@ -6,6 +6,7 @@ import { getUserFromToken } from "@/utils/auth";
 import { ErrorMessage, InfoMessage } from "@/components/ErrorMessage";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const WS_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/^http/, "ws");
 
 export default function ServiceDetailsPage() {
   const { id } = useParams();
@@ -22,6 +23,7 @@ export default function ServiceDetailsPage() {
   const [availability, setAvailability] = useState([]);
   const [user, setUser] = useState(null);
   const [eurRate, setEurRate] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     setUser(getUserFromToken());
@@ -62,6 +64,27 @@ export default function ServiceDetailsPage() {
         setSlotsLoaded(true);
       });
   }, [date, id]);
+
+  useEffect(() => {
+    if (!service || !user || user.userId !== service.user_id) return;
+    const token = localStorage.getItem("token");
+    const ws = new WebSocket(`${WS_URL}?token=${token}`);
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type !== "new_booking") return;
+      if (data.appointment.service_id !== service.id) return;
+      setNotifications((prev) => [data, ...prev]);
+      fetch(`${API_URL}/services/${id}/bookings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then(setBookings)
+        .catch(() => {});
+    };
+
+    return () => ws.close();
+  }, [service?.user_id, user?.userId, id]);
 
   if (!service) return <div>Ładowanie...</div>;
 
@@ -144,6 +167,41 @@ export default function ServiceDetailsPage() {
       {isOwner && (
         <div style={{ marginTop: "24px" }}>
           <h2>Rezerwacje</h2>
+
+          {notifications.map((n, i) => (
+            <div
+              key={i}
+              style={{
+                background: "#e6f4ea",
+                border: "1px solid #2a7a3b",
+                borderRadius: "8px",
+                padding: "12px 16px",
+                marginBottom: "10px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div>
+                <p style={{ fontWeight: "bold", marginBottom: "4px", color: "#2a7a3b" }}>
+                  Nowa rezerwacja!
+                </p>
+                <p>👤 {n.clientName}</p>
+                <p>
+                  📅 {n.appointment.appointment_time.split("T")[0]}&nbsp;&nbsp;
+                  🕐 {n.appointment.appointment_time.split("T")[1]} – {n.appointment.end_time.split("T")[1]}
+                </p>
+                {n.clientPhone && <p>📞 {n.clientPhone}</p>}
+              </div>
+              <button
+                onClick={() => setNotifications((prev) => prev.filter((_, j) => j !== i))}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#666", lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+
           {bookings.length === 0 ? (
             <p>Brak rezerwacji.</p>
           ) : (
