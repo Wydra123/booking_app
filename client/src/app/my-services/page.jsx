@@ -210,11 +210,11 @@ export default function MyServicesPage() {
 
   return (
     <div style={{ padding: "20px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+      <div style={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "20px" }}>
         <h1 style={{ margin: 0 }}>Moje usługi</h1>
         <button
           onClick={() => router.push("/my-services/add")}
-          style={{ padding: "8px 18px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
+          style={{ position: "absolute", right: 0, padding: "8px 18px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
         >
           + Dodaj usługę
         </button>
