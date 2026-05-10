@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// Domyślny szablon tygodnia — wszystkie dni wyłączone, godziny puste
 const daysTemplate = [
   { day: 0, label: "Pn", enabled: false, start: "", end: "" },
   { day: 1, label: "Wt", enabled: false, start: "", end: "" },
@@ -23,14 +24,15 @@ export default function AddServicePage() {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [availability, setAvailability] = useState(daysTemplate);
-  const [imageFile, setImageFile] = useState(null);
-  const [imageUrl, setImageUrl] = useState(null);
+  const [imageFile, setImageFile] = useState(null);   // plik wybrany z dysku
+  const [imageUrl, setImageUrl] = useState(null);     // URL z Unsplash
 
   const [unsplashQuery, setUnsplashQuery] = useState("");
   const [unsplashPhotos, setUnsplashPhotos] = useState([]);
   const [unsplashLoading, setUnsplashLoading] = useState(false);
   const [unsplashOpen, setUnsplashOpen] = useState(false);
 
+  // Uploaduje zdjęcie na serwer i zwraca ścieżkę do zapisania w bazie
   const uploadImage = async (file, token) => {
     const formData = new FormData();
     formData.append("image", file);
@@ -43,6 +45,7 @@ export default function AddServicePage() {
     return data.url || null;
   };
 
+  // Wyszukuje zdjęcia na Unsplash przez backend (klucz API jest po stronie serwera)
   const searchUnsplash = async () => {
     if (!unsplashQuery.trim()) return;
     setUnsplashLoading(true);
@@ -62,9 +65,10 @@ export default function AddServicePage() {
     }
   };
 
+  // Ustaw wybraną fotkę jako URL i zamknij panel Unsplash
   const selectUnsplashPhoto = (photo) => {
     setImageUrl(photo.full);
-    setImageFile(null);
+    setImageFile(null); // wyczyść plik z dysku jeśli był wybrany
     setUnsplashOpen(false);
     setUnsplashPhotos([]);
     setUnsplashQuery("");
@@ -76,8 +80,11 @@ export default function AddServicePage() {
       alert("Uzupełnij wszystkie pola");
       return;
     }
+
+    // Jeśli użytkownik wybrał plik z dysku, najpierw go uploaduj i pobierz URL
     let image_url = imageUrl;
     if (imageFile) image_url = await uploadImage(imageFile, token);
+
     const res = await fetch(`${API_URL}/services`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -87,6 +94,7 @@ export default function AddServicePage() {
         price,
         image_url,
         description: description || null,
+        // Wyślij tylko dni z zaznaczonym checkbox i uzupełnionymi godzinami
         availability: availability.filter((d) => d.enabled && d.start && d.end),
       }),
     });
@@ -98,6 +106,7 @@ export default function AddServicePage() {
     router.push("/my-services");
   };
 
+  // Siatka checkboxów z godzinami dla każdego dnia tygodnia
   const renderAvailabilityGrid = () => (
     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
       {availability.map((d, i) => (
@@ -114,6 +123,7 @@ export default function AddServicePage() {
             />
             {d.label}
           </label>
+          {/* Pola godzin pojawiają się dopiero po zaznaczeniu dnia */}
           {d.enabled && (
             <div>
               <input
@@ -153,6 +163,7 @@ export default function AddServicePage() {
         <h1 style={{ margin: 0 }}>Dodaj usługę</h1>
       </div>
 
+      {/* Alternatywna ścieżka — importuj dane z Google Places zamiast wpisywać ręcznie */}
       <div style={{ marginBottom: "16px" }}>
         <button
           onClick={() => router.push("/import-places")}
@@ -204,6 +215,8 @@ export default function AddServicePage() {
             Szukaj na Unsplash
           </button>
         </div>
+
+        {/* Podgląd wybranego zdjęcia — z pliku lub z Unsplash */}
         {(imageFile || imageUrl) && (
           <img
             src={imageFile ? URL.createObjectURL(imageFile) : imageUrl}
@@ -211,6 +224,7 @@ export default function AddServicePage() {
             style={{ marginTop: "8px", width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px" }}
           />
         )}
+
         {unsplashOpen && (
           <div style={{ marginTop: "10px", border: "1px solid #ccc", borderRadius: "8px", padding: "10px" }}>
             <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>

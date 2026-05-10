@@ -1,3 +1,4 @@
+// Czerwony boks błędu — renderuje się tylko gdy message jest niepusty
 function ErrorMessage({ message }) {
   if (!message) return null;
   return (
@@ -15,6 +16,7 @@ function ErrorMessage({ message }) {
   );
 }
 
+// Niebieski boks informacyjny — używany np. do "zaloguj się" lub "brak wolnych terminów"
 function InfoMessage({ message }) {
   if (!message) return null;
   return (

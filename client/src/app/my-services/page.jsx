@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// Domyślny szablon tygodnia — używany do resetowania siatki dostępności przy edycji
 const daysTemplate = [
   { day: 0, label: "Pn", enabled: false, start: "", end: "" },
   { day: 1, label: "Wt", enabled: false, start: "", end: "" },
@@ -17,7 +18,7 @@ const daysTemplate = [
 
 export default function MyServicesPage() {
   const [services, setServices] = useState([]);
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState(null); // ID usługi z otwartym formularzem edycji (null = brak)
   const [editName, setEditName] = useState("");
   const [editDuration, setEditDuration] = useState("");
   const [editPrice, setEditPrice] = useState("");
@@ -33,6 +34,7 @@ export default function MyServicesPage() {
 
   const router = useRouter();
 
+  // Pobierz usługi należące do zalogowanego providera
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -47,6 +49,7 @@ export default function MyServicesPage() {
       .catch((err) => console.error(err));
   }, [router]);
 
+  // Odśwież listę usług z serwera po zapisaniu edycji
   const refreshServices = async () => {
     const token = localStorage.getItem("token");
     const res = await fetch(`${API_URL}/my-services`, {
@@ -56,6 +59,7 @@ export default function MyServicesPage() {
     setServices(data);
   };
 
+  // Uploaduje plik na serwer i zwraca URL do zapisu w bazie
   const uploadImage = async (file, token) => {
     const formData = new FormData();
     formData.append("image", file);
@@ -68,6 +72,7 @@ export default function MyServicesPage() {
     return data.url || null;
   };
 
+  // Wyszukuje zdjęcia na Unsplash przez backend (klucz API jest po stronie serwera)
   const searchUnsplash = async () => {
     if (!unsplashQuery.trim()) return;
     setUnsplashLoading(true);
@@ -87,23 +92,28 @@ export default function MyServicesPage() {
     }
   };
 
+  // Wybór zdjęcia z Unsplash — zapisz URL i zamknij panel
   const selectUnsplashPhoto = (photo) => {
     setEditImageUrl(photo.full);
-    setEditImageFile(null);
+    setEditImageFile(null); // wyczyść ewentualny plik z dysku
     setUnsplashOpen(false);
     setUnsplashPhotos([]);
     setUnsplashQuery("");
   };
 
+  // Zwraca pełny URL zdjęcia — zewnętrzny (Unsplash) lub lokalny (/uploads/...)
   const imgSrc = (url) => url?.startsWith("http") ? url : `${API_URL}${url}`;
 
+  // Otwiera formularz edycji i pobiera aktualną dostępność z API
   const startEdit = async (service, e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // zapobiega przekierowaniu na stronę usługi
     const token = localStorage.getItem("token");
     const res = await fetch(`${API_URL}/services/${service.id}/availability`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const availData = await res.json();
+
+    // Wypełnij szablon tygodnia danymi z bazy (tylko aktywne dni mają dane)
     const filled = daysTemplate.map((d) => {
       const existing = availData.find((a) => a.day_of_week === d.day);
       if (existing) {
@@ -122,6 +132,7 @@ export default function MyServicesPage() {
     setUnsplashOpen(false);
   };
 
+  // Zapisuje edycję usługi — jeśli wybrano nowy plik, najpierw go uploaduje
   const saveEdit = async (id, e) => {
     e.stopPropagation();
     const token = localStorage.getItem("token");
@@ -131,6 +142,7 @@ export default function MyServicesPage() {
     }
     let image_url = editImageUrl;
     if (editImageFile) image_url = await uploadImage(editImageFile, token);
+
     const res = await fetch(`${API_URL}/services/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -140,6 +152,7 @@ export default function MyServicesPage() {
         price: editPrice,
         image_url,
         description: editDescription || null,
+        // Wyślij tylko dni z zaznaczonym checkbox i uzupełnionymi godzinami
         availability: editAvailability.filter((d) => d.enabled && d.start && d.end),
       }),
     });
@@ -161,10 +174,12 @@ export default function MyServicesPage() {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
+    // Usuń lokalnie bez ponownego fetch
     setServices((prev) => prev.filter((s) => s.id !== id));
     if (editingId === id) setEditingId(null);
   };
 
+  // Renderuje siatkę checkboxów z godzinami dla każdego dnia tygodnia
   const renderAvailabilityGrid = (avail, setAvail) => (
     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
       {avail.map((d, i) => (
@@ -181,6 +196,7 @@ export default function MyServicesPage() {
             />
             {d.label}
           </label>
+          {/* Godziny pojawiają się dopiero po zaznaczeniu dnia */}
           {d.enabled && (
             <div>
               <input
@@ -222,6 +238,7 @@ export default function MyServicesPage() {
 
       {services.map((service) => (
         <div key={service.id}>
+          {/* Kliknięcie w kartę przechodzi do szczegółów usługi */}
           <div
             onClick={() => router.push(`/service/${service.id}`)}
             style={{
@@ -229,6 +246,7 @@ export default function MyServicesPage() {
               border: "1px solid #ccc",
               padding: "10px",
               marginBottom: editingId === service.id ? "0" : "10px",
+              // Zaokrąglenie tylko na górze gdy formularz edycji jest otwarty poniżej
               borderRadius: editingId === service.id ? "8px 8px 0 0" : "8px",
             }}
           >
@@ -239,6 +257,7 @@ export default function MyServicesPage() {
             <button onClick={(e) => deleteService(service.id, e)}>Usuń</button>
           </div>
 
+          {/* Formularz edycji — pojawia się pod kartą jako rozwinięcie */}
           {editingId === service.id && (
             <div
               style={{
@@ -250,7 +269,7 @@ export default function MyServicesPage() {
                 background: "#000",
                 color: "#fff",
               }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()} // klik w formularz nie otwiera strony usługi
             >
               <h3 style={{ marginTop: 0, color: "#fff" }}>Edytuj usługę</h3>
               <input placeholder="Nazwa" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ background: "#222", color: "#fff", border: "1px solid #555", borderRadius: "4px", padding: "6px 8px", marginRight: "8px" }} />
@@ -267,6 +286,7 @@ export default function MyServicesPage() {
               </div>
               <div style={{ margin: "10px 0" }}>
                 <label style={{ display: "block", marginBottom: "4px", color: "#fff" }}>Zdjęcie usługi</label>
+                {/* Podgląd aktualnego zdjęcia z bazy (tylko gdy nie wybrano nowego pliku) */}
                 {editImageUrl && !editImageFile && (
                   <img
                     src={imgSrc(editImageUrl)}
@@ -280,6 +300,7 @@ export default function MyServicesPage() {
                     Szukaj na Unsplash
                   </button>
                 </div>
+                {/* Podgląd nowo wybranego pliku z dysku */}
                 {editImageFile && (
                   <img
                     src={URL.createObjectURL(editImageFile)}

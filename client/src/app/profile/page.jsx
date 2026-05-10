@@ -16,11 +16,13 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
+    // Niezalogowany użytkownik nie ma tu czego szukać
     if (!token) {
       router.push("/login");
       return;
     }
 
+    // Wypełnij formularz danymi z bazy jeśli profil już istnieje
     fetch(`${API_URL}/profile`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -33,6 +35,7 @@ export default function ProfilePage() {
       .catch((err) => console.error(err));
   }, [router]);
 
+  // Zapisuje profil — backend robi UPSERT, więc działa zarówno przy pierwszym zapisie jak i aktualizacji
   const save = async () => {
     setError("");
     setSaved(false);
@@ -99,6 +102,7 @@ export default function ProfilePage() {
 
         <hr style={{ marginTop: "24px" }} />
 
+        {/* Usunięcie konta jest nieodwracalne — backend kasuje wszystkie powiązane dane kaskadowo */}
         <button
           onClick={async () => {
             if (!window.confirm("Czy na pewno chcesz usunąć konto? Tej operacji nie można cofnąć.")) return;

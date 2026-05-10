@@ -9,9 +9,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 function Navbar() {
   const router = useRouter();
   const [token, setToken] = useState(null);
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const [user, setUser] = useState(null);   // dane z JWT: { userId, role, email }
+  const [profile, setProfile] = useState(null); // dane z bazy: { first_name, last_name, phone }
 
+  // Pobierz profil z API, żeby wyświetlić imię i nazwisko zamiast emaila
   const fetchProfile = async (t) => {
     if (!t) { setProfile(null); return; }
     try {
@@ -31,6 +32,8 @@ function Navbar() {
     setUser(getUserFromToken());
     fetchProfile(t);
 
+    // Nasłuchuj zdarzenia "authChanged" emitowanego przy logowaniu / wylogowaniu / zmianie roli
+    // Dzięki temu Navbar odświeża się bez przeładowania strony
     const updateAuth = () => {
       const t = localStorage.getItem("token");
       setToken(t);
@@ -54,6 +57,7 @@ function Navbar() {
     >
       <button onClick={() => router.push("/")}>Wszystkie usługi</button>
 
+      {/* Przycisk "Moje usługi" widoczny tylko dla providerów */}
       {user?.role === "provider" && (
         <button onClick={() => router.push("/my-services")}>Moje usługi</button>
       )}
@@ -68,6 +72,7 @@ function Navbar() {
         <button onClick={() => router.push("/profile")}>Mój profil</button>
       )}
 
+      {/* Klient może jednorazowo awansować się na providera — backend wymienia token na nowy z rolą "provider" */}
       {user?.role === "client" && (
         <button
           onClick={async () => {
@@ -77,8 +82,8 @@ function Navbar() {
               headers: { Authorization: `Bearer ${t}` },
             });
             const data = await res.json();
-            localStorage.setItem("token", data.token);
-            window.dispatchEvent(new Event("authChanged"));
+            localStorage.setItem("token", data.token); // zapisz nowy token z zaktualizowaną rolą
+            window.dispatchEvent(new Event("authChanged")); // poinformuj Navbar i inne komponenty
           }}
         >
           Zostań usługodawcą
@@ -88,6 +93,7 @@ function Navbar() {
       <div style={{ marginLeft: "auto", display: "flex", gap: "10px" }}>
         {token ? (
           <>
+            {/* Wyświetl imię i nazwisko jeśli uzupełnione, w przeciwnym razie email */}
             <span>
               {(profile?.first_name || profile?.last_name)
                 ? [profile.first_name, profile.last_name].filter(Boolean).join(" ")

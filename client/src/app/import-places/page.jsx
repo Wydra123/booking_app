@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// Etykiety poziomu cen z Google Places API (0–4)
 const PRICE_LABELS = { 0: "Bezpłatne", 1: "Tanie (~50 zł)", 2: "Średnie (~100 zł)", 3: "Drogie (~200 zł)", 4: "Bardzo drogie (~400 zł)" };
 
 export default function ImportPlacesPage() {
@@ -12,11 +13,12 @@ export default function ImportPlacesPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [durations, setDurations] = useState({});
-  const [imported, setImported] = useState({});
-  const [importing, setImporting] = useState({});
+  const [durations, setDurations] = useState({});   // { place_id: minuty } — czas trwania usługi per miejsce
+  const [imported, setImported] = useState({});     // { place_id: true } — flagi już zaimportowanych
+  const [importing, setImporting] = useState({});   // { place_id: true } — flagi w trakcie importu
   const router = useRouter();
 
+  // Wyszukaj miejsca przez backend (klucz Google API jest po stronie serwera)
   const search = async () => {
     if (!query.trim()) return;
     setLoading(true);
@@ -38,9 +40,10 @@ export default function ImportPlacesPage() {
     }
   };
 
+  // Importuj dane miejsca jako nową usługę — backend pobiera szczegóły i godziny otwarcia z Google
   const importPlace = async (place_id) => {
     const token = localStorage.getItem("token");
-    const duration = durations[place_id] || 60;
+    const duration = durations[place_id] || 60; // domyślnie 60 minut jeśli nie podano
     setImporting((prev) => ({ ...prev, [place_id]: true }));
     try {
       const res = await fetch(`${API_URL}/import/places/${place_id}`, {
@@ -50,7 +53,7 @@ export default function ImportPlacesPage() {
       });
       const data = await res.json();
       if (!res.ok) { alert(data.error || "Błąd importowania"); return; }
-      setImported((prev) => ({ ...prev, [place_id]: true }));
+      setImported((prev) => ({ ...prev, [place_id]: true })); // oznacz jako zaimportowane
     } catch {
       alert("Błąd połączenia z serwerem.");
     } finally {
@@ -86,6 +89,7 @@ export default function ImportPlacesPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
         {results.map((place) => (
           <div key={place.place_id} style={{ border: "1px solid #ddd", borderRadius: "10px", overflow: "hidden", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+            {/* Zdjęcie ładowane przez backend proxy — ukrywa klucz API przed przeglądarką */}
             {place.photo_reference ? (
               <img
                 src={`${API_URL}/import/places/photo?ref=${encodeURIComponent(place.photo_reference)}`}
@@ -102,6 +106,8 @@ export default function ImportPlacesPage() {
               <p style={{ margin: "0 0 4px", fontSize: "13px", color: "#666" }}>{place.address}</p>
               {place.rating != null && <p style={{ margin: "0 0 4px", fontSize: "13px" }}>⭐ {place.rating}</p>}
               {place.price_level != null && <p style={{ margin: "0 0 8px", fontSize: "13px" }}>{PRICE_LABELS[place.price_level]}</p>}
+
+              {/* Czas trwania usługi — każde miejsce może mieć inną wartość */}
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                 <label style={{ fontSize: "13px" }}>Czas (min):</label>
                 <input
@@ -113,6 +119,8 @@ export default function ImportPlacesPage() {
                   style={{ width: "64px", padding: "4px 6px", borderRadius: "4px", border: "1px solid #ccc" }}
                 />
               </div>
+
+              {/* Po imporcie zamień przycisk na potwierdzenie — zapobiega podwójnemu importowi */}
               {imported[place.place_id] ? (
                 <p style={{ color: "green", fontWeight: "bold", margin: 0 }}>✓ Zaimportowano!</p>
               ) : (

@@ -6,29 +6,31 @@ import { getUserFromToken } from "@/utils/auth";
 import { ErrorMessage, InfoMessage } from "@/components/ErrorMessage";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// Zamień http:// na ws:// (lub https:// na wss://) do połączenia WebSocket
 const WS_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/^http/, "ws");
 
 export default function ServiceDetailsPage() {
-  const { id } = useParams();
+  const { id } = useParams(); // ID usługi z URL: /service/[id]
   const router = useRouter();
 
   const [service, setService] = useState(null);
   const [date, setDate] = useState("");
-  const [slots, setSlots] = useState([]);
+  const [slots, setSlots] = useState([]);           // lista slotów z flagą available
   const [selectedSlot, setSelectedSlot] = useState(null);
-  const [slotsLoaded, setSlotsLoaded] = useState(false);
+  const [slotsLoaded, setSlotsLoaded] = useState(false); // czy zapytanie o sloty już wróciło
   const [bookingError, setBookingError] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [bookings, setBookings] = useState([]);
-  const [availability, setAvailability] = useState([]);
-  const [user, setUser] = useState(null);
+  const [bookings, setBookings] = useState([]);     // rezerwacje widoczne tylko dla właściciela
+  const [availability, setAvailability] = useState([]); // dni tygodnia z godzinami
+  const [user, setUser] = useState(null);           // dane z JWT zalogowanego użytkownika
   const [eurRate, setEurRate] = useState(null);
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState([]); // powiadomienia WebSocket o nowych rezerwacjach
 
   useEffect(() => {
     setUser(getUserFromToken());
   }, []);
 
+  // Pobierz dane usługi, dostępność i kurs EUR przy wejściu na stronę
   useEffect(() => {
     fetch(`${API_URL}/services/${id}`)
       .then((res) => res.json())
@@ -44,6 +46,7 @@ export default function ServiceDetailsPage() {
       .catch(() => {});
   }, [id]);
 
+  // Pobierz listę rezerwacji — tylko właściciel usługi ma do nich dostęp
   useEffect(() => {
     if (!service || !user || user.userId !== service.user_id) return;
     const token = localStorage.getItem("token");
@@ -55,6 +58,7 @@ export default function ServiceDetailsPage() {
       .catch((err) => console.error(err));
   }, [service, id, user?.userId]);
 
+  // Załaduj sloty po każdej zmianie daty
   useEffect(() => {
     if (!date) return;
     fetch(`${API_URL}/available-slots/${id}?date=${date}`)
@@ -65,6 +69,7 @@ export default function ServiceDetailsPage() {
       });
   }, [date, id]);
 
+  // Połącz się przez WebSocket — właściciel dostaje powiadomienia o nowych rezerwacjach w czasie rzeczywistym
   useEffect(() => {
     if (!service || !user || user.userId !== service.user_id) return;
     const token = localStorage.getItem("token");
@@ -73,8 +78,9 @@ export default function ServiceDetailsPage() {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type !== "new_booking") return;
-      if (data.appointment.service_id !== service.id) return;
-      setNotifications((prev) => [data, ...prev]);
+      if (data.appointment.service_id !== service.id) return; // ignoruj rezerwacje innych usług
+      setNotifications((prev) => [data, ...prev]); // pokaż powiadomienie na górze listy
+      // Odśwież listę rezerwacji żeby nowa była widoczna
       fetch(`${API_URL}/services/${id}/bookings`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -83,13 +89,14 @@ export default function ServiceDetailsPage() {
         .catch(() => {});
     };
 
-    return () => ws.close();
+    return () => ws.close(); // zamknij połączenie przy odmontowaniu komponentu
   }, [service?.user_id, user?.userId, id]);
 
   if (!service) return <div>Ładowanie...</div>;
 
   const isOwner = user?.userId === service.user_id;
 
+  // Złóż rezerwację na wybrany slot
   const book = async () => {
     if (!user) {
       router.push("/login");
@@ -116,12 +123,14 @@ export default function ServiceDetailsPage() {
 
     setBookingSuccess(true);
 
+    // Odśwież sloty żeby zarezerwowany termin od razu pokazał się jako zajęty
     const refresh = await fetch(`${API_URL}/available-slots/${id}?date=${date}`);
     const refreshed = await refresh.json();
     setSlots(refreshed);
     setSelectedSlot(null);
   };
 
+  // Provider anuluje rezerwację klienta
   const cancelBooking = async (bookingId) => {
     if (!confirm("Czy na pewno chcesz anulować tę rezerwację?")) return;
     const token = localStorage.getItem("token");
@@ -148,12 +157,13 @@ export default function ServiceDetailsPage() {
         </div>
       )}
       <h1>{service.name}</h1>
-      
+
       <p style={{ lineHeight: 1.5 }}>⏱ {service.duration} min</p>
       <p>
         💰 {service.price} zł
         {eurRate && <span style={{ color: "#888", fontSize: "14px"}}> ≈ {(service.price / eurRate).toFixed(2)} EUR</span>}
       </p>
+      {/* Wyświetl imię i nazwisko providera, lub email jeśli profil nie wypełniony */}
       {(service.first_name || service.last_name) ? (
         <p>👤 {[service.first_name, service.last_name].filter(Boolean).join(" ")}</p>
       ) : (
@@ -164,10 +174,12 @@ export default function ServiceDetailsPage() {
         <p style={{ marginTop: "12px", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>{service.description}</p>
       )}
 
+      {/* Panel właściciela — lista rezerwacji i powiadomienia WebSocket */}
       {isOwner && (
         <div style={{ marginTop: "24px" }}>
           <h2>Rezerwacje</h2>
 
+          {/* Powiadomienia w czasie rzeczywistym — znikają po kliknięciu ✕ */}
           {notifications.map((n, i) => (
             <div
               key={i}
@@ -229,10 +241,12 @@ export default function ServiceDetailsPage() {
         </div>
       )}
 
+      {/* Panel klienta — kalendarz z wyborem slotu i przycisk rezerwacji */}
       {!isOwner && (
         <>
           {!user && <InfoMessage message="Zaloguj się, żeby zarezerwować termin." />}
 
+          {/* Wizualny podgląd dostępnych dni tygodnia z godzinami */}
           {availability.length > 0 && (
             <div style={{ marginBottom: "12px" }}>
               <p style={{ marginBottom: "6px" }}>Dostępne dni:</p>
@@ -260,6 +274,7 @@ export default function ServiceDetailsPage() {
             </div>
           )}
 
+          {/* Nawigacja po datach — strzałki ◀▶ lub bezpośredni input */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", justifyContent: "center" }}>
             <button
               onClick={() => {
@@ -299,6 +314,7 @@ export default function ServiceDetailsPage() {
             <InfoMessage message="Wszystkie terminy w tym dniu są już zajęte. Wybierz inną datę." />
           )}
 
+          {/* Siatka przycisków z godzinami — kliknięty slot podświetla się jako wybrany */}
           <div className="slots-container">
             {slots.map((slot) => {
               const time = slot.time.split("T")[1];

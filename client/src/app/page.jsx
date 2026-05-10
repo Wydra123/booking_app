@@ -10,21 +10,24 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [maxDuration, setMaxDuration] = useState("");
-  const [eurRate, setEurRate] = useState(null);
+  const [eurRate, setEurRate] = useState(null); // kurs EUR/PLN z NBP, null jeśli nie załadowany
   const router = useRouter();
 
   useEffect(() => {
+    // Pobierz wszystkie usługi publicznie (bez autoryzacji)
     fetch(`${API_URL}/services`)
       .then((res) => res.json())
       .then((data) => setServices(data))
       .catch((err) => console.error(err));
 
+    // Pobierz aktualny kurs EUR z NBP — błąd ignorowany, ceny EUR są opcjonalne
     fetch(`${API_URL}/api/nbp/eur`)
       .then((res) => res.json())
       .then((data) => setEurRate(data.rate))
       .catch(() => {});
   }, []);
 
+  // Filtrowanie po stronie klienta — działa na już załadowanych danych, bez nowych requestów
   const filtered = services.filter((s) => {
     if (!s.name.toLowerCase().includes(query.toLowerCase())) return false;
     if (maxPrice !== "" && s.price > Number(maxPrice)) return false;
@@ -88,6 +91,7 @@ export default function HomePage() {
                 overflow: "hidden",
               }}
             >
+              {/* Zdjęcia z Unsplash mają pełny URL, lokalne zdjęcia mają ścieżkę względną /uploads/... */}
               {service.image_url ? (
                 <img
                   src={service.image_url.startsWith("http") ? service.image_url : `${API_URL}${service.image_url}`}
@@ -105,6 +109,7 @@ export default function HomePage() {
               <p style={{ margin: "2px 0" }}>⏱ {service.duration} min</p>
               <p style={{ margin: "2px 0" }}>
                 💰 {service.price} zł
+                {/* Przelicznik na EUR pojawia się tylko gdy kurs NBP załadowany poprawnie */}
                 {eurRate && <span style={{ color: "#888", fontSize: "13px" }}> ≈ {(service.price / eurRate).toFixed(2)} EUR</span>}
               </p>
             </div>

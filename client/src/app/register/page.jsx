@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const register = async () => {
     setError("");
 
+    // Walidacja po stronie klienta — backend też to sprawdza, ale szybsza odpowiedź dla użytkownika
     if (!email || !password || !confirmPassword) {
       setError("Wypełnij wszystkie pola.");
       return;
@@ -42,6 +43,7 @@ export default function RegisterPage() {
       return;
     }
 
+    // Po pomyślnej rejestracji przekieruj do logowania
     router.push("/login");
   };
 

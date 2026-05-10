@@ -7,6 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export default function MyAppointmentsPage() {
   const [appointments, setAppointments] = useState([]);
 
+  // Pobierz wszystkie rezerwacje zalogowanego użytkownika posortowane chronologicznie
   useEffect(() => {
     const token = localStorage.getItem("token");
     fetch(`${API_URL}/my-appointments`, {
@@ -32,6 +33,7 @@ export default function MyAppointmentsPage() {
       return;
     }
 
+    // Usuń anulowaną rezerwację z listy lokalnie bez ponownego fetch
     setAppointments((prev) => prev.filter((a) => a.id !== id));
   };
 

@@ -33,6 +33,7 @@ export default function LoginPage() {
       return;
     }
 
+    // Zapisz token w localStorage i powiadom Navbar o zmianie stanu logowania
     localStorage.setItem("token", data.token);
     window.dispatchEvent(new Event("authChanged"));
     router.push("/");
