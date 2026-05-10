@@ -2,13 +2,14 @@ const { WebSocketServer } = require("ws");
 const jwt = require("jsonwebtoken");
 const { parse } = require("url");
 
-// userId -> Set<WebSocket>
+// Mapa: userId -> Set<WebSocket> — provider może mieć kilka otwartych zakładek
 const providerConnections = new Map();
 
 function init(server) {
   const wss = new WebSocketServer({ server });
 
   wss.on("connection", (ws, req) => {
+    // Token JWT przekazywany jako query param: /ws?token=<jwt>
     const { query } = parse(req.url, true);
     const token = query.token;
 
@@ -26,11 +27,13 @@ function init(server) {
       return;
     }
 
+    // Dodaj połączenie do zestawu dla tego providera
     if (!providerConnections.has(userId)) {
       providerConnections.set(userId, new Set());
     }
     providerConnections.get(userId).add(ws);
 
+    // Posprzątaj po rozłączeniu — usuń mapę jeśli provider nie ma już żadnych połączeń
     ws.on("close", () => {
       const conns = providerConnections.get(userId);
       if (conns) {
@@ -41,12 +44,13 @@ function init(server) {
   });
 }
 
+// Wyślij wiadomość do wszystkich aktywnych połączeń danego providera
 function notifyProvider(userId, data) {
   const conns = providerConnections.get(userId);
-  if (!conns) return;
+  if (!conns) return; // provider offline — nic nie robimy
   const msg = JSON.stringify(data);
   for (const ws of conns) {
-    if (ws.readyState === 1) ws.send(msg);
+    if (ws.readyState === 1) ws.send(msg); // readyState 1 = OPEN
   }
 }
 

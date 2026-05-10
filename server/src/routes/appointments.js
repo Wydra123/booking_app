@@ -4,6 +4,7 @@ const pool = require("../db");
 const authMiddleware = require("../middleware/auth");
 const wsServer = require("../ws");
 
+// Dodaje minuty do czasu w formacie "YYYY-MM-DDTHH:MM" (bez strefy czasowej)
 const addMinutes = (time, mins) => {
   const [date, t] = time.split("T");
   let [h, m] = t.split(":").map(Number);
@@ -15,10 +16,12 @@ const addMinutes = (time, mins) => {
   return `${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
+// Stwórz nową rezerwację
 router.post("/appointments", authMiddleware, async (req, res) => {
   const { service_id, appointment_time } = req.body;
   const userId = req.user.userId;
 
+  // Pobierz czas trwania usługi, żeby obliczyć end_time
   const service = await pool.query(
     "SELECT id, duration, name, user_id FROM services WHERE id = $1",
     [service_id]
@@ -27,6 +30,7 @@ router.post("/appointments", authMiddleware, async (req, res) => {
   const { duration, name: serviceName, user_id: providerId } = service.rows[0];
   const end_time = addMinutes(appointment_time, Number(duration));
 
+  // Sprawdź kolizję — czy w tym przedziale czasowym istnieje już inna rezerwacja
   const conflict = await pool.query(
     `SELECT * FROM appointments
      WHERE service_id = $1
@@ -46,6 +50,7 @@ router.post("/appointments", authMiddleware, async (req, res) => {
     [userId, service_id, appointment_time, end_time]
   );
 
+  // Pobierz dane klienta, żeby wysłać powiadomienie providerowi
   const clientInfo = await pool.query(
     `SELECT u.email, p.first_name, p.last_name, p.phone
      FROM users u
@@ -56,6 +61,7 @@ router.post("/appointments", authMiddleware, async (req, res) => {
   const client = clientInfo.rows[0];
   const clientName = [client.first_name, client.last_name].filter(Boolean).join(" ") || client.email;
 
+  // Wyślij powiadomienie przez WebSocket do providera (jeśli jest online)
   wsServer.notifyProvider(providerId, {
     type: "new_booking",
     appointment: result.rows[0],
@@ -68,10 +74,12 @@ router.post("/appointments", authMiddleware, async (req, res) => {
   res.json(result.rows[0]);
 });
 
+// Klient anuluje własną rezerwację
 router.delete("/appointments/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
 
+  // Warunek user_id zapobiega usunięciu cudzej rezerwacji
   await pool.query(
     "DELETE FROM appointments WHERE id = $1 AND user_id = $2",
     [id, userId]
@@ -80,10 +88,12 @@ router.delete("/appointments/:id", authMiddleware, async (req, res) => {
   res.send("Deleted");
 });
 
+// Provider anuluje rezerwację w swojej usłudze
 router.delete("/provider/appointments/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
 
+  // JOIN z services gwarantuje, że provider może usunąć tylko rezerwacje swoich usług
   const result = await pool.query(
     `DELETE FROM appointments
      USING services
@@ -100,6 +110,7 @@ router.delete("/provider/appointments/:id", authMiddleware, async (req, res) => 
   res.send("Deleted");
 });
 
+// Pobierz wszystkie zajęte terminy dla danej usługi (używane przy wyborze daty w UI)
 router.get("/appointments/:serviceId", async (req, res) => {
   const result = await pool.query(
     "SELECT appointment_time, end_time FROM appointments WHERE service_id = $1",
@@ -109,10 +120,11 @@ router.get("/appointments/:serviceId", async (req, res) => {
   res.json(result.rows);
 });
 
+// Zwróć listę slotów z flagą available dla wybranego dnia
 router.get("/available-slots/:serviceId", async (req, res) => {
   try {
     const { serviceId } = req.params;
-    const { date } = req.query;
+    const { date } = req.query; // format: YYYY-MM-DD
 
     if (!date) {
       return res.status(400).json({ error: "Missing date" });
@@ -125,6 +137,7 @@ router.get("/available-slots/:serviceId", async (req, res) => {
 
     const duration = Number(service.rows[0].duration);
 
+    // JS getDay() zwraca 0=niedziela..6=sobota, konwertuj na 0=poniedziałek..6=niedziela
     const jsDay = new Date(date).getDay();
     const day = (jsDay + 6) % 7;
 
@@ -134,11 +147,12 @@ router.get("/available-slots/:serviceId", async (req, res) => {
     );
 
     if (availability.rows.length === 0) {
-      return res.json([]);
+      return res.json([]); // provider nie pracuje w ten dzień
     }
 
     const { start_time, end_time } = availability.rows[0];
 
+    // Generuj sloty co 30 minut od otwarcia do zamknięcia
     let slots = [];
     let current = `${date}T${start_time.slice(0, 5)}`;
     const end = `${date}T${end_time.slice(0, 5)}`;
@@ -149,6 +163,7 @@ router.get("/available-slots/:serviceId", async (req, res) => {
       current = addMinutes(current, 30);
     }
 
+    // Pobierz istniejące rezerwacje i oznacz kolidujące sloty jako zajęte
     const appointments = await pool.query(
       "SELECT appointment_time, end_time FROM appointments WHERE service_id = $1",
       [serviceId]
@@ -172,6 +187,7 @@ router.get("/available-slots/:serviceId", async (req, res) => {
   }
 });
 
+// Pobierz wszystkie rezerwacje zalogowanego użytkownika (jako klient)
 router.get("/my-appointments", authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 

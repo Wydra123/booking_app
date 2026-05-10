@@ -10,14 +10,32 @@ function Navbar() {
   const router = useRouter();
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+
+  const fetchProfile = async (t) => {
+    if (!t) { setProfile(null); return; }
+    try {
+      const res = await fetch(`${API_URL}/profile`, {
+        headers: { Authorization: `Bearer ${t}` },
+      });
+      const data = await res.json();
+      setProfile(data);
+    } catch {
+      setProfile(null);
+    }
+  };
 
   useEffect(() => {
-    setToken(localStorage.getItem("token"));
+    const t = localStorage.getItem("token");
+    setToken(t);
     setUser(getUserFromToken());
+    fetchProfile(t);
 
     const updateAuth = () => {
-      setToken(localStorage.getItem("token"));
+      const t = localStorage.getItem("token");
+      setToken(t);
       setUser(getUserFromToken());
+      fetchProfile(t);
     };
 
     window.addEventListener("authChanged", updateAuth);
@@ -70,7 +88,11 @@ function Navbar() {
       <div style={{ marginLeft: "auto", display: "flex", gap: "10px" }}>
         {token ? (
           <>
-            <span>{user?.email}</span>
+            <span>
+              {(profile?.first_name || profile?.last_name)
+                ? [profile.first_name, profile.last_name].filter(Boolean).join(" ")
+                : user?.email}
+            </span>
             <button
               onClick={() => {
                 localStorage.removeItem("token");

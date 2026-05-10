@@ -3,11 +3,13 @@ const router = express.Router();
 const pool = require("../db");
 const authMiddleware = require("../middleware/auth");
 
+// Pobierz wszystkie usługi (widoczne publicznie, bez logowania)
 router.get("/services", async (req, res) => {
   const result = await pool.query("SELECT * FROM services");
   res.json(result.rows);
 });
 
+// Dodaj nową usługę — tylko dla providerów
 router.post("/services", authMiddleware, async (req, res) => {
   if (req.user.role !== "provider") {
     return res.status(403).json({ error: "Only providers can add services" });
@@ -16,6 +18,7 @@ router.post("/services", authMiddleware, async (req, res) => {
   const { name, duration, price, availability, image_url, description } = req.body;
   const userId = req.user.userId;
 
+  // Wstaw usługę do bazy i pobierz przydzielone ID
   const service = await pool.query(
     "INSERT INTO services (name, duration, price, user_id, image_url, description) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
     [name, duration, price, userId, image_url || null, description || null]
@@ -23,6 +26,7 @@ router.post("/services", authMiddleware, async (req, res) => {
 
   const serviceId = service.rows[0].id;
 
+  // Zapisz dostępność tylko dla dni, które provider oznaczył jako aktywne
   for (const day of availability) {
     if (day.enabled) {
       await pool.query(
@@ -36,6 +40,7 @@ router.post("/services", authMiddleware, async (req, res) => {
   res.json(service.rows[0]);
 });
 
+// Pobierz szczegóły jednej usługi wraz z danymi kontaktowymi providera
 router.get("/services/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -56,11 +61,13 @@ router.get("/services/:id", async (req, res) => {
   res.json(result.rows[0]);
 });
 
+// Edytuj usługę — tylko właściciel może ją modyfikować
 router.put("/services/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
   const { name, duration, price, availability, image_url, description } = req.body;
 
+  // Upewnij się, że zalogowany użytkownik jest właścicielem tej usługi
   const check = await pool.query(
     "SELECT id FROM services WHERE id = $1 AND user_id = $2",
     [id, userId]
@@ -75,6 +82,7 @@ router.put("/services/:id", authMiddleware, async (req, res) => {
     [name, duration, price, image_url !== undefined ? image_url : null, description || null, id]
   );
 
+  // Przebuduj dostępność od zera — usuń starą i wstaw nową
   await pool.query("DELETE FROM availability WHERE service_id = $1", [id]);
 
   for (const day of availability) {
@@ -89,6 +97,7 @@ router.put("/services/:id", authMiddleware, async (req, res) => {
   res.json(result.rows[0]);
 });
 
+// Usuń usługę — warunek user_id zapobiega usunięciu cudzej usługi
 router.delete("/services/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
@@ -101,6 +110,7 @@ router.delete("/services/:id", authMiddleware, async (req, res) => {
   res.send("Deleted");
 });
 
+// Pobierz listę rezerwacji dla danej usługi — tylko dla jej właściciela
 router.get("/services/:id/bookings", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
@@ -129,6 +139,7 @@ router.get("/services/:id/bookings", authMiddleware, async (req, res) => {
   res.json(result.rows);
 });
 
+// Pobierz okna dostępności dla danej usługi (dni tygodnia + godziny)
 router.get("/services/:id/availability", async (req, res) => {
   const result = await pool.query(
     "SELECT * FROM availability WHERE service_id = $1",
@@ -137,6 +148,7 @@ router.get("/services/:id/availability", async (req, res) => {
   res.json(result.rows);
 });
 
+// Pobierz usługi należące do zalogowanego providera
 router.get("/my-services", authMiddleware, async (req, res) => {
   const userId = req.user.userId;
 
