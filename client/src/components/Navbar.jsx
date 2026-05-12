@@ -62,6 +62,10 @@ function Navbar() {
         <button onClick={() => router.push("/my-services")}>Moje usługi</button>
       )}
 
+      {user?.role === "admin" && (
+        <button onClick={() => router.push("/admin")}>Panel admina</button>
+      )}
+
       {token && (
         <button onClick={() => router.push("/my-appointments")}>
           Moje rezerwacje

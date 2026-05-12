@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(curl -s http://localhost:3001/services)",
-      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Desktop\\\\projekt_web\\\\Project-N\" -Force)"
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Desktop\\\\projekt_web\\\\Project-N\" -Force)",
+      "Bash(Remove-Item \"C:/Users/Admin/Desktop/projekt_web/Project-N/.git/index.lock\" -Force)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Admin\\Desktop\\projekt_web\\Project-N\\.git"
     ]
   }
 }

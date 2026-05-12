@@ -50,6 +50,7 @@ app.use(require("./routes/services"));
 app.use(require("./routes/appointments"));
 app.use(require("./routes/googlePlaces"));
 app.use(require("./routes/external"));
+app.use(require("./routes/admin"));
 
 app.post("/upload", authMiddleware, upload.single("image"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "Brak pliku" });
