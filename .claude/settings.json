@@ -3,7 +3,11 @@
     "allow": [
       "Bash(curl -s http://localhost:3001/services)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Desktop\\\\projekt_web\\\\Project-N\" -Force)",
-      "Bash(Remove-Item \"C:/Users/Admin/Desktop/projekt_web/Project-N/.git/index.lock\" -Force)"
+      "Bash(Remove-Item \"C:/Users/Admin/Desktop/projekt_web/Project-N/.git/index.lock\" -Force)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Desktop\\\\projekt_web\\\\Project-N\" -Recurse -Depth 2)",
+      "Bash(Select-Object FullName)",
+      "Bash(Head -100)",
+      "Bash(npx jest *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Desktop\\projekt_web\\Project-N\\.git"

@@ -1,4 +1,8 @@
 {
   "/page": "app/page.js",
+  "/my-services/page": "app/my-services/page.js",
+  "/my-appointments/page": "app/my-appointments/page.js",
+  "/service/[id]/page": "app/service/[id]/page.js",
+  "/import-places/page": "app/import-places/page.js",
   "/admin/page": "app/admin/page.js"
 }

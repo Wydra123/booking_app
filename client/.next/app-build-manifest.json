@@ -11,6 +11,36 @@
       "static/chunks/main-app.js",
       "static/chunks/app/page.js"
     ],
+    "/login/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/login/page.js"
+    ],
+    "/my-services/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/my-services/page.js"
+    ],
+    "/my-services/add/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/my-services/add/page.js"
+    ],
+    "/import-places/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/import-places/page.js"
+    ],
+    "/service/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/service/[id]/page.js"
+    ],
+    "/my-appointments/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/my-appointments/page.js"
+    ],
     "/admin/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
