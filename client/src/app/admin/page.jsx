@@ -17,12 +17,15 @@ export default function AdminPage() {
   const [services, setServices] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Sprawdź rolę — jeśli nie admin, wróć na stronę główną
   useEffect(() => {
     const user = getUserFromToken();
     if (!user || user.role !== "admin") {
       router.replace("/");
+    } else {
+      setCurrentUser(user);
     }
   }, []);
 
@@ -185,35 +188,46 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} style={{ borderBottom: "1px solid #eee" }}>
-                    <td style={td}>{u.id}</td>
-                    <td style={td}>{u.email}</td>
-                    <td style={td}>
-                      {[u.first_name, u.last_name].filter(Boolean).join(" ") || "—"}
-                    </td>
-                    <td style={td}>{u.phone || "—"}</td>
-                    <td style={td}>
-                      <select
-                        value={u.role}
-                        onChange={(e) => changeRole(u.id, e.target.value)}
-                        style={{ padding: "4px 8px", borderRadius: "4px" }}
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={td}>
-                      <button
-                        onClick={() => deleteUser(u.id, u.email)}
-                        style={dangerBtn}
-                      >
-                        Usuń
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {users.map((u) => {
+                  const isSelf = currentUser && u.id === currentUser.userId;
+                  return (
+                    <tr key={u.id} style={{ borderBottom: "1px solid #eee" }}>
+                      <td style={td}>{u.id}</td>
+                      <td style={td}>{u.email}</td>
+                      <td style={td}>
+                        {[u.first_name, u.last_name].filter(Boolean).join(" ") || "—"}
+                      </td>
+                      <td style={td}>{u.phone || "—"}</td>
+                      <td style={td}>
+                        {isSelf ? (
+                          <span style={{ padding: "4px 8px", color: "#666" }}>{u.role}</span>
+                        ) : (
+                          <select
+                            value={u.role}
+                            onChange={(e) => changeRole(u.id, e.target.value)}
+                            style={{ padding: "4px 8px", borderRadius: "4px" }}
+                          >
+                            {ROLES.map((r) => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+                      <td style={td}>
+                        {isSelf ? (
+                          <span style={{ color: "#999", fontSize: "13px" }}>to Ty</span>
+                        ) : (
+                          <button
+                            onClick={() => deleteUser(u.id, u.email)}
+                            style={dangerBtn}
+                          >
+                            Usuń
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
