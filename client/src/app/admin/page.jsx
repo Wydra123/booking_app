@@ -122,7 +122,7 @@ export default function AdminPage() {
       <h1 style={{ marginBottom: "20px" }}>Panel admina</h1>
 
       {/* Zakładki */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "24px" }}>
+      <div style={{ display: "flex", gap: "8px", marginBottom: "24px", justifyContent: "center", width: "100%" }}>
         {TABS.map((t) => (
           <button
             key={t}
