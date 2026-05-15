@@ -5,6 +5,7 @@ const { parse } = require("url");
 // Mapa: userId -> Set<WebSocket> — provider może mieć kilka otwartych zakładek
 const providerConnections = new Map();
 
+//komentarz 
 function init(server) {
   const wss = new WebSocketServer({ server });
 
